@@ -45,6 +45,7 @@ export function getCurrentAge(birthYear: number, birthMonth = 1, birthDay = 1): 
 /** 标记 K 线中的大运之年（最佳阳K）与大凶之年（最差阴K） */
 export function annotateKlineExtremes(data: KlineData[]): KlineData[] {
   if (data.length === 0) return data;
+
   let bestIdx = -1;
   let worstIdx = -1;
   let bestBody = -1;
@@ -62,13 +63,24 @@ export function annotateKlineExtremes(data: KlineData[]): KlineData[] {
     }
   });
 
-  if (bestIdx < 0) bestIdx = data.findIndex((d) => d.close >= d.open);
-  if (worstIdx < 0) worstIdx = data.findIndex((d) => d.close < d.open);
+  // AI/平滑处理后可能几乎全是阳K或阴K，回退到按收盘分最高/最低标记
+  if (bestIdx < 0) {
+    bestIdx = data.reduce((pick, d, i, arr) => (d.close > arr[pick]!.close ? i : pick), 0);
+  }
+  if (worstIdx < 0) {
+    worstIdx = data.reduce((pick, d, i, arr) => (d.close < arr[pick]!.close ? i : pick), 0);
+  }
+  if (bestIdx === worstIdx && data.length > 1) {
+    worstIdx = data.reduce((pick, d, i) => {
+      if (i === bestIdx) return pick;
+      return d.close < data[pick]!.close ? i : pick;
+    }, bestIdx === 0 ? 1 : 0);
+  }
 
   return data.map((d, i) => ({
     ...d,
-    isBestYear: bestIdx >= 0 && i === bestIdx,
-    isWorstYear: worstIdx >= 0 && i === worstIdx,
+    isBestYear: i === bestIdx,
+    isWorstYear: i === worstIdx,
   }));
 }
 

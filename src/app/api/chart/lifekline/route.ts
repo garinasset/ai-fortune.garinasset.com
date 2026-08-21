@@ -3,6 +3,7 @@ import { generateLifeKlineWithAI, isAIJsonParseError } from "@/lib/llm";
 import { getServerLLMConfig } from "@/lib/server-config";
 import { calculateBazi, formatBaziPrompt } from "@/lib/bazi";
 import { normalizeBirthInfo } from "@/lib/birth-utils";
+import { annotateKlineExtremes } from "@/lib/fortune-chart";
 import type { BirthInfo } from "@/lib/types";
 
 export async function POST(req: NextRequest) {
@@ -40,7 +41,11 @@ export async function POST(req: NextRequest) {
       baziText,
     });
 
-    return NextResponse.json(data);
+    return NextResponse.json({
+      ...data,
+      periodKline: annotateKlineExtremes(data.periodKline),
+      fullKline: annotateKlineExtremes(data.fullKline),
+    });
   } catch (e) {
     const message = e instanceof Error ? e.message : "服务器错误";
     if (isAIJsonParseError(e) && process.env.NODE_ENV !== "production") {

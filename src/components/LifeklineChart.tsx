@@ -7,7 +7,7 @@ import {
 } from "recharts";
 import { Maximize2, Minimize2, BarChart2, TrendingUp, X, ChevronLeft } from "lucide-react";
 import type { BirthInfo, KlineData, KlineViewMode } from "@/lib/types";
-import { generateMonthlyKline } from "@/lib/fortune-chart";
+import { annotateKlineExtremes, generateMonthlyKline } from "@/lib/fortune-chart";
 
 interface LifeklineChartProps {
   data: KlineData[];
@@ -107,7 +107,8 @@ export default function LifeklineChart({
   const containerRef = useRef<HTMLDivElement>(null);
 
   const isLifeFull = viewMode === "life" && data.length > 50;
-  const hasTopMarkers = data.some((d) => getTopMarkerLabel(d, viewMode));
+  const annotatedData = useMemo(() => annotateKlineExtremes(data), [data]);
+  const hasTopMarkers = annotatedData.some((d) => getTopMarkerLabel(d, viewMode));
   const height = compact ? 210 : fullscreen ? 480 : 320;
 
   useEffect(() => {
@@ -131,7 +132,7 @@ export default function LifeklineChart({
   const bottomMargin = data.length > 50 ? 40 : data.length > 15 ? 36 : 28;
   const topMargin = hasTopMarkers ? 42 : 16;
 
-  const chartData = useMemo((): ChartRow[] => data.map((d, i) => {
+  const chartData = useMemo((): ChartRow[] => annotatedData.map((d, i) => {
     const luckLabel = d.close >= d.open ? "吉" : "凶";
     const showLabel = !isLifeFull || (d.age ?? 0) % 5 === 0;
     return {
@@ -142,7 +143,7 @@ export default function LifeklineChart({
       barLabel: showLabel ? luckLabel : "",
       index: i,
     };
-  }), [data, isLifeFull]);
+  }), [annotatedData, isLifeFull]);
 
   const xAxisLabel = viewMode === "month" ? "月份" : viewMode === "forward" ? "年份" : "年龄(岁)";
   const tickInterval = data.length <= 12 ? 0 : data.length <= 20 ? 1 : Math.max(1, Math.floor(data.length / 8));
