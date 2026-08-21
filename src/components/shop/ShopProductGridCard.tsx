@@ -3,6 +3,7 @@
 import { cn } from "@/lib/utils";
 import { formatPrice, type ShopProduct } from "@/lib/shop/catalog";
 import Badge from "@/components/ui/Badge";
+import ShopProductAvatar from "@/components/shop/ShopProductAvatar";
 import { ShopEmojiDisplay } from "@/components/icons/SpiritGourdIcon";
 
 interface ShopProductGridCardProps {
@@ -26,13 +27,13 @@ export default function ShopProductGridCard({
       )}
     >
       <div className="flex gap-2 p-2">
-        <div className="relative flex h-[72px] w-[72px] shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-app-bg to-app-accent/10">
-          {product.imageUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={product.imageUrl} alt={product.name} className="h-full w-full rounded-lg object-cover" />
-          ) : (
-            <ShopEmojiDisplay emoji={product.emoji} iconClassName="h-8 w-8 text-app-gold" />
-          )}
+        <div className="relative flex h-[72px] w-[72px] shrink-0 items-center justify-center overflow-hidden rounded-lg bg-gradient-to-br from-app-bg to-app-accent/10">
+          <ShopProductAvatar
+            product={product}
+            mediaSize="md"
+            className="rounded-lg"
+            iconClassName="h-8 w-8 text-app-gold"
+          />
           {comingSoon && (
             <span className="absolute -left-0.5 -top-0.5 scale-90">
               <Badge variant="gold">即将上线</Badge>

@@ -13,7 +13,7 @@ import {
 } from "@/lib/shop/order-store";
 import { getShopPaymentQrUrl } from "@/lib/shop/payment";
 import { formatPrice } from "@/lib/shop/catalog";
-import { ShopEmojiDisplay } from "@/components/icons/SpiritGourdIcon";
+import { ShopOrderItemAvatar } from "@/components/shop/ShopProductAvatar";
 import { useApp } from "@/context/AppContext";
 
 type Step = "method" | "qrcode" | "success";
@@ -92,7 +92,16 @@ export default function ShopPayPage() {
               请使用{PAY_METHOD_LABEL[payMethod]}扫码支付
             </p>
             <p className="caption mt-1 inline-flex items-center justify-center gap-1.5">
-              <ShopEmojiDisplay emoji={order.items[0]?.emoji ?? ""} iconClassName="h-5 w-5 text-app-gold" />
+              {order.items[0] && (
+                <span className="flex h-6 w-6 items-center justify-center overflow-hidden rounded-full bg-app-bg">
+                  <ShopOrderItemAvatar
+                    item={order.items[0]}
+                    mediaSize="xs"
+                    className="rounded-full"
+                    iconClassName="h-5 w-5 text-app-gold"
+                  />
+                </span>
+              )}
               {order.items[0]?.name} · {formatPrice(order.totalAmount)}
             </p>
             <div className="mx-auto mt-4 inline-block rounded-2xl border border-app-border bg-white p-3">

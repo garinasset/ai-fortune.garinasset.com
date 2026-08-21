@@ -1,13 +1,15 @@
 "use client";
 
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import BirthForm from "@/components/BirthForm";
 import LifeklineChart, { MonthlyLineMini } from "@/components/LifeklineChart";
 import GenerationOverlay from "@/components/GenerationOverlay";
+import FortuneLoadingSpinner from "@/components/FortuneLoadingSpinner";
 import PaywallModal from "@/components/PaywallModal";
 import OverallOverviewPanel from "@/components/OverallOverviewPanel";
 import {
   generateYearAnalysis,
+  sliceForwardPeriodFromFull,
 } from "@/lib/fortune-chart";
 import { calculateBazi } from "@/lib/bazi";
 import { canUse, incrementUsage, getRemaining, addHistory } from "@/lib/user-store";
@@ -52,7 +54,7 @@ export default function LifeklinePage() {
   const [phase, setPhase] = useState<"form" | "generating" | "result">("form");
   const [birthInfo, setBirthInfo] = useState<BirthInfo | null>(null);
   const [fullKline, setFullKline] = useState<KlineData[]>([]);
-  const [periodKline, setPeriodKline] = useState<KlineData[]>([]);
+  const [currentYearMonthly, setCurrentYearMonthly] = useState<KlineData[]>([]);
   const [drillYear, setDrillYear] = useState<number | null>(null);
   const [bazi, setBazi] = useState<BaziResult | null>(null);
   const [overall, setOverall] = useState<OverallAnalysis | null>(null);
@@ -67,7 +69,13 @@ export default function LifeklinePage() {
   const [error, setError] = useState<string | null>(null);
   const [monthlyKline, setMonthlyKline] = useState<KlineData[]>([]);
   const [monthlyLoading, setMonthlyLoading] = useState(false);
-  const [refreshingKline, setRefreshingKline] = useState(false);
+  const [periodLoading, setPeriodLoading] = useState(false);
+  const [generateReady, setGenerateReady] = useState(false);
+  const generateResultRef = useRef<{
+    fullKline: KlineData[];
+    overall: OverallAnalysis;
+    currentYearMonthly: KlineData[];
+  } | null>(null);
 
   useEffect(() => {
     setRemaining(getRemaining("lifekline"));
@@ -79,7 +87,7 @@ export default function LifeklinePage() {
     const cached = loadSessionResult<{
       birthInfo: BirthInfo;
       fullKline: KlineData[];
-      periodKline: KlineData[];
+      currentYearMonthly?: KlineData[];
       drillYear: number | null;
       bazi: BaziResult | null;
       overall: OverallAnalysis;
@@ -88,7 +96,7 @@ export default function LifeklinePage() {
     if (cached?.birthInfo && cached.fullKline?.length && cached.overall) {
       setBirthInfo(cached.birthInfo);
       setFullKline(cached.fullKline);
-      setPeriodKline(cached.periodKline);
+      setCurrentYearMonthly(cached.currentYearMonthly ?? []);
       setDrillYear(cached.drillYear);
       setBazi(cached.bazi);
       setOverall(cached.overall);
@@ -98,6 +106,13 @@ export default function LifeklinePage() {
   }, []);
   const hasResult = phase === "result" && fullKline.length > 0;
   const showLifeOverview = hasResult && lifeYears < 100;
+
+  const periodKline = useMemo(() => {
+    if (!fullKline.length) return [];
+    if (lifeYears === 1) return currentYearMonthly;
+    if (lifeYears >= 100) return fullKline;
+    return sliceForwardPeriodFromFull(fullKline, lifeYears);
+  }, [fullKline, lifeYears, currentYearMonthly]);
 
   const mainData = useMemo(() => {
     if (!hasResult) return [];
@@ -111,6 +126,27 @@ export default function LifeklinePage() {
     if (lifeYears >= 100) return "life";
     return "forward";
   }, [drillYear, lifeYears]);
+
+  const requestMonthlyKline = useCallback(async (info: BirthInfo, year: number) => {
+    const res = await fetch("/api/chart/monthly", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ birthInfo: info, year }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      if (data?.debug) {
+        const pos = data.debug.errorPosition ? `位置 ${data.debug.errorPosition}` : "位置未知";
+        const detail = data.debug.parseError ? `；${data.debug.parseError}` : "";
+        throw new Error(`${data.error ?? "月度K线生成失败"}（${pos}${detail}）`);
+      }
+      throw new Error(data.error ?? "月度K线生成失败");
+    }
+    if (!Array.isArray(data.kline) || !data.kline.length) {
+      throw new Error("月度K线返回数据不完整");
+    }
+    return data.kline as KlineData[];
+  }, []);
 
   const requestLifeKline = useCallback(async (info: BirthInfo, years: number) => {
     const res = await fetch("/api/chart/lifekline", {
@@ -138,27 +174,69 @@ export default function LifeklinePage() {
   }, []);
 
   useEffect(() => {
-    if (birthInfo && phase === "result") {
-      (async () => {
-        try {
-          setError(null);
-          setRefreshingKline(true);
-          const data = await requestLifeKline(birthInfo, lifeYears);
-          setPeriodKline(data.periodKline);
-          setFullKline(data.fullKline);
-          setOverall(data.overall);
-          setDrillYear(null);
-          setSelectedYear(null);
-          setSelectedIndex(undefined);
-        } catch (err) {
-          console.error("period kline failed", err);
-          setError(err instanceof Error ? err.message : "人生K线生成失败，请稍后重试");
-        } finally {
-          setRefreshingKline(false);
-        }
-      })();
-    }
-  }, [lifeYears, birthInfo, phase, requestLifeKline]);
+    if (phase !== "generating" || !birthInfo) return;
+    setGenerateReady(false);
+    generateResultRef.current = null;
+
+    (async () => {
+      try {
+        const currentYear = new Date().getFullYear();
+        const [data, monthly] = await Promise.all([
+          requestLifeKline(birthInfo, 100),
+          requestMonthlyKline(birthInfo, currentYear),
+        ]);
+        generateResultRef.current = {
+          fullKline: data.fullKline,
+          overall: data.overall,
+          currentYearMonthly: monthly,
+        };
+        setGenerateReady(true);
+      } catch (err) {
+        console.error("lifekline generate failed", err);
+        setError(err instanceof Error ? err.message : "人生K线生成失败，请稍后重试");
+        setPhase("form");
+      }
+    })();
+  }, [phase, birthInfo, requestLifeKline, requestMonthlyKline]);
+
+  useEffect(() => {
+    if (lifeYears !== 1 || currentYearMonthly.length || !birthInfo || phase !== "result") return;
+
+    (async () => {
+      try {
+        setPeriodLoading(true);
+        setError(null);
+        const monthly = await requestMonthlyKline(birthInfo, new Date().getFullYear());
+        setCurrentYearMonthly(monthly);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "月度K线生成失败，请稍后重试");
+      } finally {
+        setPeriodLoading(false);
+      }
+    })();
+  }, [lifeYears, currentYearMonthly.length, birthInfo, phase, requestMonthlyKline]);
+
+  useEffect(() => {
+    if (phase !== "result" || !birthInfo || !fullKline.length || !overall) return;
+    saveSessionResult("lifekline", {
+      birthInfo,
+      fullKline,
+      currentYearMonthly,
+      drillYear,
+      bazi,
+      overall,
+      lifeYears,
+    });
+  }, [phase, birthInfo, fullKline, currentYearMonthly, drillYear, bazi, overall, lifeYears]);
+
+  const handleLifeYearsChange = (value: number) => {
+    if (value === lifeYears) return;
+    setLifeYears(value);
+    setDrillYear(null);
+    setMonthlyKline([]);
+    setSelectedYear(null);
+    setSelectedIndex(undefined);
+  };
 
   const handleSubmit = (info: BirthInfo) => {
     if (!ensurePrimaryPersonBeforeCalc()) { setPrimaryModal(true); return; }
@@ -169,56 +247,40 @@ export default function LifeklinePage() {
   };
 
   const onGenerateComplete = useCallback(() => {
-    if (!birthInfo) return;
-    (async () => {
-      try {
-        const data = await requestLifeKline(birthInfo, lifeYears);
-        let baziResult: BaziResult | null = null;
-        try {
-          baziResult = calculateBazi(birthInfo);
-        } catch {
-          baziResult = null;
-        }
+    const pending = generateResultRef.current;
+    if (!pending || !birthInfo) return;
 
-        setFullKline(data.fullKline);
-        setPeriodKline(data.periodKline);
-        setDrillYear(null);
-        setBazi(baziResult);
-        setOverall(data.overall);
-        incrementUsage("lifekline");
-        addHistory({
-          type: "lifekline",
-          title: `${birthInfo.name || birthInfo.year + "年"}生辰K线`,
-          data: { birthInfo, kline: data.fullKline, overall: data.overall, bazi: baziResult },
-        });
-        const personName = birthInfo.name || `命理者${birthInfo.year}`;
-        saveRecord({
-          type: "lifekline",
-          personKey: buildPersonKey(personName, birthInfo),
-          personName,
-          personLabel: buildPersonLabel(personName, birthInfo),
-          title: `人生K线 · ${lifeYears === 1 ? "1年(月)" : lifeYears === 100 ? "全部" : lifeYears + "年"}`,
-          summary: data.overall.summary,
-          data: { birthInfo, kline: data.fullKline, overall: data.overall, bazi: baziResult, lifeYears },
-        });
-        saveBirthInfo(birthInfo);
-        saveSessionResult("lifekline", {
-          birthInfo,
-          fullKline: data.fullKline,
-          periodKline: data.periodKline,
-          drillYear: null,
-          bazi: baziResult,
-          overall: data.overall,
-          lifeYears,
-        });
-        setPhase("result");
-      } catch (err) {
-        console.error("lifekline generate failed", err);
-        setError(err instanceof Error ? err.message : "人生K线生成失败，请稍后重试");
-        setPhase("form");
-      }
-    })();
-  }, [birthInfo, lifeYears, requestLifeKline]);
+    let baziResult: BaziResult | null = null;
+    try {
+      baziResult = calculateBazi(birthInfo);
+    } catch {
+      baziResult = null;
+    }
+
+    setFullKline(pending.fullKline);
+    setCurrentYearMonthly(pending.currentYearMonthly);
+    setDrillYear(null);
+    setBazi(baziResult);
+    setOverall(pending.overall);
+    incrementUsage("lifekline");
+    addHistory({
+      type: "lifekline",
+      title: `${birthInfo.name || birthInfo.year + "年"}生辰K线`,
+      data: { birthInfo, kline: pending.fullKline, overall: pending.overall, bazi: baziResult },
+    });
+    const personName = birthInfo.name || `命理者${birthInfo.year}`;
+    saveRecord({
+      type: "lifekline",
+      personKey: buildPersonKey(personName, birthInfo),
+      personName,
+      personLabel: buildPersonLabel(personName, birthInfo),
+      title: `人生K线 · ${lifeYears === 1 ? "1年(月)" : lifeYears === 100 ? "全部" : lifeYears + "年"}`,
+      summary: pending.overall.summary,
+      data: { birthInfo, kline: pending.fullKline, overall: pending.overall, bazi: baziResult, lifeYears },
+    });
+    saveBirthInfo(birthInfo);
+    setPhase("result");
+  }, [birthInfo, lifeYears]);
 
   const handleBarClick = (_index: number, item: KlineData) => {
     if (!birthInfo || item.isMonthly) return;
@@ -226,24 +288,8 @@ export default function LifeklinePage() {
       try {
         setError(null);
         setMonthlyLoading(true);
-        const res = await fetch("/api/chart/monthly", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ birthInfo, year: item.year }),
-        });
-        const data = await res.json();
-        if (!res.ok) {
-          if (data?.debug) {
-            const pos = data.debug.errorPosition ? `位置 ${data.debug.errorPosition}` : "位置未知";
-            const detail = data.debug.parseError ? `；${data.debug.parseError}` : "";
-            throw new Error(`${data.error ?? "月度K线生成失败"}（${pos}${detail}）`);
-          }
-          throw new Error(data.error ?? "月度K线生成失败");
-        }
-        if (!Array.isArray(data.kline) || !data.kline.length) {
-          throw new Error("月度K线返回数据不完整");
-        }
-        setMonthlyKline(data.kline as KlineData[]);
+        const kline = await requestMonthlyKline(birthInfo, item.year);
+        setMonthlyKline(kline);
         setDrillYear(item.year);
         setSelectedIndex(undefined);
         setSelectedYear(null);
@@ -277,7 +323,7 @@ export default function LifeklinePage() {
         <PageCarouselBanner slides={PAGE_BANNERS.lifekline} className="!mb-3 !pt-0" />
         <FortuneHubNav active={hubTab} onChange={setHubTab} />
         <div className="relative min-h-[320px]">
-          <GenerationOverlay embedded onComplete={onGenerateComplete} duration={7000} />
+          <GenerationOverlay embedded taskReady={generateReady} onComplete={onGenerateComplete} />
         </div>
       </>
     );
@@ -340,7 +386,7 @@ export default function LifeklinePage() {
       {showKlineContent && hasResult && (
         <div className="mb-3 flex flex-wrap gap-1.5">
           {LIFE_YEAR_OPTIONS.map(({ label, value }) => (
-            <button key={value} onClick={() => setLifeYears(value)} disabled={refreshingKline || monthlyLoading}
+                <button key={value} onClick={() => handleLifeYearsChange(value)} disabled={periodLoading || monthlyLoading}
               className={`rounded-lg px-3 py-1 text-xs ${
                 lifeYears === value ? "bg-app-accent text-white" : "border border-app-border text-app-muted"
               } disabled:opacity-40`}>{label}</button>
@@ -352,14 +398,19 @@ export default function LifeklinePage() {
         <p className="mb-3 text-xs text-red-400">{error}</p>
       )}
 
-      {showKlineContent && hasResult && refreshingKline && (
-        <p className="mb-3 text-xs text-app-accent animate-pulse">正在刷新当前推演年数的 K 线数据…</p>
+      {showKlineContent && hasResult && periodLoading && (
+        <div className="relative mb-3 min-h-[140px] rounded-xl border border-app-border/60 bg-app-card/40">
+          <FortuneLoadingSpinner
+            compact
+            message="正在刷新当前推演年数的 K 线数据…"
+          />
+        </div>
       )}
 
       {showKlineContent && (phase === "form" || hasResult) && (
         <>
           <LifeklineChart
-            data={hasResult ? mainData : []}
+            data={hasResult && !periodLoading ? mainData : []}
             viewMode={hasResult ? mainViewMode : "forward"}
             birthInfo={birthInfo}
             onBarClick={handleBarClick}
@@ -440,7 +491,7 @@ export default function LifeklinePage() {
                 setSelectedYear(null);
                 setDrillYear(null);
                 setFullKline([]);
-                setPeriodKline([]);
+                setCurrentYearMonthly([]);
                 setOverall(null);
                 setBazi(null);
               }}

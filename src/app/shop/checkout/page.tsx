@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import BackLink from "@/components/ui/BackLink";
 import PageHeader from "@/components/ui/PageHeader";
 import { formatPrice, getProductBySku } from "@/lib/shop/catalog";
-import { ShopEmojiDisplay } from "@/components/icons/SpiritGourdIcon";
+import ShopProductAvatar from "@/components/shop/ShopProductAvatar";
 import { createOrder } from "@/lib/shop/order-store";
 import { useApp } from "@/context/AppContext";
 
@@ -45,7 +45,14 @@ function CheckoutContent() {
         <div className="app-card">
           <p className="block-label mb-3 text-app-accent">商品清单</p>
           <div className="flex items-center gap-3 rounded-xl border border-app-border bg-app-bg/40 p-3">
-            <ShopEmojiDisplay emoji={product.emoji} iconClassName="h-8 w-8 text-app-gold" />
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-app-bg">
+              <ShopProductAvatar
+                product={product}
+                mediaSize="md"
+                className="rounded-xl"
+                iconClassName="h-8 w-8 text-app-gold"
+              />
+            </span>
             <div className="min-w-0 flex-1">
               <p className="block-title">{product.name}</p>
               <p className="caption">{product.desc}</p>

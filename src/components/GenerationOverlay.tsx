@@ -23,6 +23,8 @@ interface GenerationOverlayProps {
   icon?: string;
   /** 嵌入面板内，不遮挡顶部导航 */
   embedded?: boolean;
+  /** 传入后与真实任务同步：完成前进度最高约 92%，taskReady 为 true 后再到 100% */
+  taskReady?: boolean;
 }
 
 export default function GenerationOverlay({
@@ -34,11 +36,31 @@ export default function GenerationOverlay({
   steps = DEFAULT_STEPS,
   icon = "☯",
   embedded = false,
+  taskReady,
 }: GenerationOverlayProps) {
   const [step, setStep] = useState(0);
   const [progress, setProgress] = useState(0);
+  const syncMode = taskReady !== undefined;
 
   useEffect(() => {
+    if (syncMode) {
+      const stepInterval = setInterval(() => {
+        setStep((s) => Math.min(s + 1, steps.length - 1));
+      }, 900);
+
+      const progressInterval = setInterval(() => {
+        setProgress((p) => {
+          if (taskReady) return Math.min(p + 6, 100);
+          return Math.min(p + 0.6, 92);
+        });
+      }, 180);
+
+      return () => {
+        clearInterval(stepInterval);
+        clearInterval(progressInterval);
+      };
+    }
+
     const stepInterval = setInterval(() => {
       setStep((s) => Math.min(s + 1, steps.length - 1));
     }, duration / steps.length);
@@ -54,7 +76,14 @@ export default function GenerationOverlay({
       clearInterval(progressInterval);
       if (timer) clearTimeout(timer);
     };
-  }, [duration, onComplete, steps.length]);
+  }, [duration, onComplete, steps.length, syncMode, taskReady]);
+
+  useEffect(() => {
+    if (!syncMode || !taskReady) return;
+    setProgress(100);
+    const timer = setTimeout(() => onComplete?.(), 420);
+    return () => clearTimeout(timer);
+  }, [syncMode, taskReady, onComplete]);
 
   const stepText = message ?? steps[step];
 
@@ -97,7 +126,7 @@ export default function GenerationOverlay({
             }}
           />
         </div>
-        <p className="mt-2 text-xs text-app-muted">{progress}%</p>
+        <p className="mt-2 text-xs text-app-muted">{Math.round(progress)}%</p>
 
         <div className="mt-8 flex gap-1">
           {[...Array(5)].map((_, i) => (

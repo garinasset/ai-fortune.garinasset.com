@@ -6,7 +6,7 @@ import PageHeader from "@/components/ui/PageHeader";
 import BackLink from "@/components/ui/BackLink";
 import Badge from "@/components/ui/Badge";
 import { formatPrice, getProductBySku } from "@/lib/shop/catalog";
-import { ShopEmojiDisplay } from "@/components/icons/SpiritGourdIcon";
+import ShopProductAvatar from "@/components/shop/ShopProductAvatar";
 import { ownsVirtualItem } from "@/lib/shop/inventory-store";
 import { useApp } from "@/context/AppContext";
 
@@ -46,8 +46,13 @@ export default function ShopProductPage() {
       <section className="page-section">
         <div className="app-card panel-accent !p-3">
           <div className="flex items-center gap-3">
-            <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-app-bg">
-              <ShopEmojiDisplay emoji={product.emoji} iconClassName="h-12 w-12 text-app-gold" />
+            <span className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-app-bg">
+              <ShopProductAvatar
+                product={product}
+                mediaSize="lg"
+                className="rounded-xl"
+                iconClassName="h-12 w-12 text-app-gold"
+              />
             </span>
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap gap-1">

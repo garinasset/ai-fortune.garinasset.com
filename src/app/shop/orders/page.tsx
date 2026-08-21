@@ -11,7 +11,7 @@ import {
   PAY_METHOD_LABEL,
 } from "@/lib/shop/order-store";
 import { formatPrice } from "@/lib/shop/catalog";
-import { ShopEmojiDisplay } from "@/components/icons/SpiritGourdIcon";
+import { ShopOrderItemAvatar } from "@/components/shop/ShopProductAvatar";
 import { useApp } from "@/context/AppContext";
 
 export default function ShopOrdersPage() {
@@ -57,7 +57,16 @@ export default function ShopOrdersPage() {
                   </div>
 
                   <div className="flex items-center gap-3 rounded-xl border border-app-border/60 bg-app-bg/30 p-3">
-                    <ShopEmojiDisplay emoji={item?.emoji ?? ""} iconClassName="h-7 w-7 text-app-gold" />
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-app-bg">
+                      {item && (
+                        <ShopOrderItemAvatar
+                          item={item}
+                          mediaSize="sm"
+                          className="rounded-xl"
+                          iconClassName="h-7 w-7 text-app-gold"
+                        />
+                      )}
+                    </span>
                     <div className="min-w-0 flex-1">
                       <p className="block-title truncate">{item?.name}</p>
                       <p className="caption">x{item?.qty ?? 1}</p>

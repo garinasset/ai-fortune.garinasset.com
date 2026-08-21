@@ -3,7 +3,7 @@
 import { cn } from "@/lib/utils";
 import { formatPrice, type ShopProduct } from "@/lib/shop/catalog";
 import Badge from "@/components/ui/Badge";
-import { ShopEmojiDisplay } from "@/components/icons/SpiritGourdIcon";
+import ShopProductAvatar from "@/components/shop/ShopProductAvatar";
 
 interface ShopProductCardProps {
   product: ShopProduct;
@@ -31,9 +31,11 @@ export default function ShopProductCard({
       )}
     >
       <div className="flex items-start gap-2.5">
-        <span className={cn("flex shrink-0 items-center justify-center rounded-xl bg-app-bg", compact ? "h-10 w-10" : "h-12 w-12")}>
-          <ShopEmojiDisplay
-            emoji={product.emoji}
+        <span className={cn("flex shrink-0 items-center justify-center overflow-hidden rounded-xl bg-app-bg", compact ? "h-10 w-10" : "h-12 w-12")}>
+          <ShopProductAvatar
+            product={product}
+            mediaSize={compact ? "sm" : "md"}
+            className="rounded-xl"
             iconClassName={compact ? "h-6 w-6 text-app-gold" : "h-8 w-8 text-app-gold"}
           />
         </span>
