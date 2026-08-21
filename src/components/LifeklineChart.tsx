@@ -45,6 +45,50 @@ function markerColor(entry: KlineData): string {
   return "#e05555";
 }
 
+/** 根据数据实际分数计算 Y 轴范围：底部贴近最低分，减少无意义空白 */
+function computeScoreDomain(data: KlineData[]): [number, number] {
+  if (!data.length) return [0, 100];
+
+  let min = Infinity;
+  let max = -Infinity;
+  for (const d of data) {
+    min = Math.min(min, d.low, d.open, d.close);
+    max = Math.max(max, d.high, d.open, d.close);
+  }
+
+  const span = Math.max(max - min, 1);
+  const padBottom = Math.min(3, Math.max(1.5, span * 0.03));
+  const padTop = Math.min(10, Math.max(4, span * 0.12));
+
+  let lo = Math.max(0, min - padBottom);
+  let hi = Math.min(100, max + padTop);
+
+  if (hi - lo < 16) {
+    const mid = (max + min) / 2;
+    lo = Math.max(0, mid - 8);
+    hi = Math.min(100, mid + 8);
+  }
+
+  return [Math.floor(lo), Math.ceil(hi)];
+}
+
+/** 生成与 domain 一致的真实分数刻度 */
+function buildScoreAxisTicks(lo: number, hi: number): number[] {
+  const span = hi - lo;
+  const step = span > 50 ? 20 : span > 28 ? 10 : span > 14 ? 5 : 2;
+  const ticks: number[] = [];
+  for (let v = Math.ceil(lo / step) * step; v <= hi; v += step) {
+    ticks.push(v);
+  }
+  if (!ticks.length || ticks[0]! > lo + step * 0.4) {
+    ticks.unshift(Math.round(lo));
+  }
+  if (ticks[ticks.length - 1]! < hi - step * 0.4) {
+    ticks.push(Math.round(hi));
+  }
+  return [...new Set(ticks)].sort((a, b) => a - b);
+}
+
 function KlineTopMarkers({
   xAxisMap,
   yAxisMap,
@@ -109,34 +153,20 @@ export default function LifeklineChart({
   const isLifeFull = viewMode === "life" && data.length > 50;
   const annotatedData = useMemo(() => annotateKlineExtremes(data), [data]);
   const hasTopMarkers = annotatedData.some((d) => getTopMarkerLabel(d, viewMode));
-  const height = compact ? 260 : fullscreen ? 560 : 400;
+  const height = compact ? 280 : fullscreen ? 580 : 420;
 
-  const yDomain = useMemo((): [number, number] => {
-    // 人生 0–100 岁总览：运势分固定 0–100，与 tooltip/数据一致
-    if (viewMode === "life") return [0, 100];
+  const yDomain = useMemo(
+    () => computeScoreDomain(annotatedData),
+    [annotatedData],
+  );
 
-    if (!annotatedData.length) return [0, 100];
-    let min = Infinity;
-    let max = -Infinity;
-    for (const d of annotatedData) {
-      min = Math.min(min, d.low, d.open, d.close);
-      max = Math.max(max, d.high, d.open, d.close);
-    }
-    const span = max - min;
-    const pad = Math.max(6, span * 0.15);
-    let lo = Math.max(0, Math.floor(min - pad));
-    let hi = Math.min(100, Math.ceil(max + pad));
-    if (hi - lo < 24) {
-      const mid = (hi + lo) / 2;
-      lo = Math.max(0, Math.floor(mid - 12));
-      hi = Math.min(100, Math.ceil(mid + 12));
-    }
-    return [lo, hi];
-  }, [annotatedData, viewMode]);
+  const yAxisTicks = useMemo(
+    () => buildScoreAxisTicks(yDomain[0], yDomain[1]),
+    [yDomain],
+  );
 
-  const yAxisTicks = viewMode === "life" ? [0, 20, 40, 60, 80, 100] : undefined;
-
-  const maxBarSize = isLifeFull ? 3 : viewMode === "life" ? 5 : 12;
+  const maxBarSize = isLifeFull ? 2 : viewMode === "life" ? 4 : 10;
+  const barGap = isLifeFull ? "24%" : viewMode === "life" ? "20%" : "18%";
 
   useEffect(() => {
     setMounted(true);
@@ -156,7 +186,7 @@ export default function LifeklineChart({
   }, [mounted, height]);
 
   const labelFontSize = data.length > 50 ? 6 : data.length > 20 ? 7 : 9;
-  const bottomMargin = data.length > 50 ? 40 : data.length > 15 ? 36 : 28;
+  const bottomMargin = data.length > 50 ? 32 : data.length > 15 ? 30 : 24;
   const topMargin = hasTopMarkers ? 42 : 16;
 
   const chartData = useMemo((): ChartRow[] => annotatedData.map((d, i) => {
@@ -166,13 +196,11 @@ export default function LifeklineChart({
       ...d,
       xLabel: d.xLabel ?? (d.isMonthly ? `${d.month}月` : d.age === 0 ? "出生" : `${d.age}岁`),
       bodyBase: Math.min(d.open, d.close),
-      bodyHeight: viewMode === "life"
-        ? Math.max(Math.abs(d.close - d.open), 0.6)
-        : Math.max(Math.abs(d.close - d.open), (yDomain[1] - yDomain[0]) * 0.018),
+      bodyHeight: Math.max(Math.abs(d.close - d.open), (yDomain[1] - yDomain[0]) * 0.022),
       barLabel: showLabel ? luckLabel : "",
       index: i,
     };
-  }), [annotatedData, isLifeFull, yDomain, viewMode]);
+  }), [annotatedData, isLifeFull, yDomain]);
 
   const xAxisLabel = viewMode === "month" ? "月份" : viewMode === "forward" ? "年份" : "年龄(岁)";
   const tickInterval = data.length <= 12 ? 0 : data.length <= 20 ? 1 : Math.max(1, Math.floor(data.length / 8));
@@ -260,7 +288,7 @@ export default function LifeklineChart({
             <ComposedChart
               data={chartData}
               margin={{ top: topMargin, right: 4, left: -8, bottom: bottomMargin }}
-              barCategoryGap="18%"
+              barCategoryGap={barGap}
             >
               <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
               <XAxis
@@ -293,7 +321,7 @@ export default function LifeklineChart({
                   </div>
                 );
               }} />
-              <ReferenceLine y={viewMode === "life" ? 50 : (yDomain[0] + yDomain[1]) / 2} stroke="var(--color-border)" strokeDasharray="4 4" />
+              <ReferenceLine y={(yDomain[0] + yDomain[1]) / 2} stroke="var(--color-border)" strokeDasharray="4 4" />
               <Bar dataKey="bodyBase" stackId="c" fill="transparent" maxBarSize={maxBarSize} />
               <Bar dataKey="bodyHeight" stackId="c" maxBarSize={maxBarSize}>
                 {chartData.map((entry, i) => (
@@ -347,7 +375,7 @@ export default function LifeklineChart({
     <>
       <div className={compact ? "app-card !p-3" : "app-card !p-3"}>
         {!mounted ? (
-          <div className="animate-pulse rounded-xl bg-app-border/30" style={{ height: compact ? 260 : 400 }} />
+          <div className="animate-pulse rounded-xl bg-app-border/30" style={{ height: compact ? 280 : 420 }} />
         ) : (
           chartContent
         )}
