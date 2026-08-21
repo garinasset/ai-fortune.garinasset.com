@@ -129,6 +129,14 @@ export function isMockMode(config?: LLMConfig): boolean {
   return MOCK_MODE || !config?.apiKey;
 }
 
+/** isMockMode 为 false 时调用，将 config 收窄为 LLMConfig */
+function requireLLMConfig(config: LLMConfig | undefined): LLMConfig {
+  if (!config?.apiKey) {
+    throw new Error("LLM API Key 未配置");
+  }
+  return config;
+}
+
 export async function analyzeBazi(
   config: LLMConfig | undefined,
   bazi: BaziResult,
@@ -139,7 +147,7 @@ export async function analyzeBazi(
     return { analysis: getMockBaziAnalysis(bazi), mock: true };
   }
 
-  const analysis = await analyzeWithLLM(config!, "bazi", buildBaziPrompt(baziText));
+  const analysis = await analyzeWithLLM(requireLLMConfig(config), "bazi", buildBaziPrompt(baziText));
   return { analysis, mock: false };
 }
 
@@ -160,13 +168,13 @@ export async function analyzeImage(
   let prompt = buildImagePrompt(type, description);
 
   if (config?.provider === "openai") {
-    const visionResult = await analyzeImageWithVision(config, type, imageBase64);
+    const visionResult = await analyzeImageWithVision(requireLLMConfig(config), type, imageBase64);
     if (visionResult) {
       prompt = buildImagePrompt(type, visionResult);
     }
   }
 
-  const analysis = await analyzeWithLLM(config!, type, prompt);
+  const analysis = await analyzeWithLLM(requireLLMConfig(config), type, prompt);
   return { analysis, mock: false };
 }
 
@@ -345,8 +353,10 @@ export async function generateLifeKlineWithAI(
   const birthText = formatBirthInfoForPrompt(params.birthInfo);
   const baziNote = params.baziText ? `\n八字参考：${params.baziText}` : "";
 
+  const llmConfig = requireLLMConfig(config);
+
   const period = await completeJson<LifeKlineAiResult>(
-    config,
+    llmConfig,
     "你是一名命理数据分析师。请严格输出 json（json_object），不要输出额外文本。",
     `请根据下列用户信息，生成“人生K线”的结构化数据。\n用户信息：${birthText}${baziNote}\n当前年份：${currentYear}，当前年龄约：${currentAge}。\n要求：\n1) 生成未来 ${requestYears} 年的年K线（从当前年份开始，必须连续、升序、不得缺年）。\n2) kline 为数组，每项包含 year, age, open, close, high, low，可选 ganZhi。\n3) 必须满足 age = year - 出生年。\n4) 所有数值范围 1-100，且满足 high >= max(open, close), low <= min(open, close)。\n5) K线风格需接近股票市场：存在上升段、回撤段、震荡段，不允许长期单边；任意连续同向K线不超过 4 根。\n6) 邻近年份变化要平滑，避免不合理断崖跳变（通常 |close-open| <= 15，且相邻 close 差值通常 <= 18）。\n7) 生成 summary（100-220字）和 dimensions（11个维度，key/label/score/text）。\n8) dimensions 的 key 使用：overall,career,wealth,marriage,noble,health,safety,family,love,personality,fengshui。\n9) 输出紧凑 json，不要换行注释，不要多余字段。\n返回格式示例：{\"summary\":\"...\",\"kline\":[{\"year\":2026,\"age\":28,\"open\":62,\"close\":68,\"high\":72,\"low\":58}],\"dimensions\":[{\"key\":\"overall\",\"label\":\"整体命势\",\"score\":72,\"text\":\"...\"}]}`,
     { maxTokens: 4200, temperature: 0.4 },
@@ -355,7 +365,7 @@ export async function generateLifeKlineWithAI(
   let full: LifeKlineAiResult | null = null;
   if (includeWholeLife) {
     full = await completeJson<LifeKlineAiResult>(
-      config,
+      llmConfig,
       "你是一名命理数据分析师。请严格输出 json（json_object），不要输出额外文本。",
       `请根据下列用户信息，生成“人生K线 0-100岁”的结构化数据。\n用户信息：${birthText}${baziNote}\n要求：\n1) kline 必须按年龄从 0 到 100（共 101 项，连续、升序、不得缺失），且 year=出生年+age。\n2) 每项包含 year, age, open, close, high, low，可选 ganZhi。\n3) 所有数值范围 1-100，且满足 high >= max(open, close), low <= min(open, close)。\n4) K线风格需接近股票市场：不同人生阶段有趋势切换与波动，不允许 10 年以上明显单边；任意连续同向K线不超过 4 根。\n5) 邻近年龄变化要平滑，避免不合理断崖跳变（通常 |close-open| <= 15，且相邻 close 差值通常 <= 18）。\n6) 生成 summary（100-220字）和 dimensions（11个维度，key/label/score/text）。\n7) dimensions 的 key 使用：overall,career,wealth,marriage,noble,health,safety,family,love,personality,fengshui。\n8) 输出紧凑 json，不要换行注释，不要多余字段。\n返回格式示例：{\"summary\":\"...\",\"kline\":[{\"year\":1998,\"age\":0,\"open\":50,\"close\":52,\"high\":55,\"low\":46}],\"dimensions\":[{\"key\":\"overall\",\"label\":\"整体命势\",\"score\":72,\"text\":\"...\"}]}`,
       { maxTokens: 7800, temperature: 0.35 },
@@ -554,7 +564,7 @@ export async function generateMonthlyKlineWithAI(
   const age = params.year - params.birthInfo.year;
 
   const result = await completeJson<MonthlyKlineAiResult>(
-    config,
+    requireLLMConfig(config),
     "你是一名命理数据分析师。请严格输出 json（json_object），不要输出额外文本。",
     `请根据用户信息生成 ${params.year} 年的月度K线数据（1-12月）。\n用户信息：${birthText}${baziNote}\n要求：\n1) 返回 kline 数组，包含 12 项，每项 month/open/close/high/low。\n2) month 从 1 到 12。\n3) 数值范围 1-100，且 high >= max(open, close), low <= min(open, close)。\n4) 输出紧凑 json，不要换行注释，不要多余字段。\n返回示例：{\"kline\":[{\"month\":1,\"open\":60,\"close\":64,\"high\":68,\"low\":57}]}`,
     { maxTokens: 2200, temperature: 0.35 },
@@ -623,7 +633,7 @@ export async function askSpiritPet(
   const userContext = formatBirthInfoForPrompt(params.birthInfo);
 
   const answer = await completeJson<{ answer: string }>(
-    config,
+    requireLLMConfig(config),
     `你是一位温暖、克制且具体的命理顾问与灵宠陪伴者。\n请严格输出 json。\n返回格式：{"answer":"..."}。\nanswer 要求：1) 80-180 字；2) 给出可执行建议；3) 不夸大承诺；4) 中文输出。`,
     `用户：${params.personName ?? "用户"}\n灵宠：${petTitle}\n生辰信息：${userContext}\n问题：${params.question}`,
   );
@@ -653,7 +663,7 @@ export async function analyzeLiuyaoWithAI(
   }
 
   const result = await completeJson<LiuyaoAiResult>(
-    config,
+    requireLLMConfig(config),
     `你是精通周易六爻的专业命理师。\n请严格输出 json，格式：{"analysis":"...","advice":"...","luck":"大吉|吉|平|凶|大凶"}。\nanalysis 控制在 120-260 字，advice 控制在 30-80 字，输出中文。`,
     `问题：${params.question}\n本卦：${params.guaName}卦\n卦辞：${params.guaDesc}\n六爻：${params.linesText}`,
   );
