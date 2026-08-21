@@ -28,6 +28,7 @@ type ChartRow = KlineData & {
   xLabel: string;
   bodyBase: number;
   bodyHeight: number;
+  scoreRel: number;
   barLabel: string;
   index: number;
 };
@@ -57,8 +58,8 @@ function computeScoreDomain(data: KlineData[]): [number, number] {
   }
 
   const span = Math.max(max - min, 1);
-  const padBottom = Math.min(3, Math.max(1.5, span * 0.03));
-  const padTop = Math.min(10, Math.max(4, span * 0.12));
+  const padBottom = 0.5;
+  const padTop = Math.min(8, Math.max(3, span * 0.1));
 
   let lo = Math.max(0, min - padBottom);
   let hi = Math.min(100, max + padTop);
@@ -94,11 +95,13 @@ function KlineTopMarkers({
   yAxisMap,
   data,
   viewMode,
+  yMin,
 }: {
   xAxisMap?: Record<string, { scale: { (v: string): number; bandwidth?: () => number } }>;
   yAxisMap?: Record<string, { scale: (v: number) => number }>;
   data: ChartRow[];
   viewMode: KlineViewMode;
+  yMin: number;
 }) {
   const xAxis = xAxisMap ? Object.values(xAxisMap)[0] : undefined;
   const yAxis = yAxisMap ? Object.values(yAxisMap)[0] : undefined;
@@ -112,7 +115,7 @@ function KlineTopMarkers({
         const label = getTopMarkerLabel(entry, viewMode);
         if (!label) return null;
         const cx = (xAxis.scale(entry.xLabel) ?? 0) + bandW / 2;
-        const barTop = yAxis.scale(Math.max(entry.open, entry.close));
+        const barTop = yAxis.scale(Math.max(entry.open, entry.close) - yMin);
         const labelY = barTop - 10;
         const lineTop = labelY - 16;
         const color = markerColor(entry);
@@ -165,8 +168,15 @@ export default function LifeklineChart({
     [yDomain],
   );
 
-  const maxBarSize = isLifeFull ? 2 : viewMode === "life" ? 4 : 10;
-  const barGap = isLifeFull ? "24%" : viewMode === "life" ? "20%" : "18%";
+  const yMin = yDomain[0];
+  const ySpan = Math.max(yDomain[1] - yDomain[0], 1);
+
+  const yAxisTickValues = useMemo(
+    () => yAxisTicks.map((t) => t - yMin),
+    [yAxisTicks, yMin],
+  );
+
+  const maxBarSize = isLifeFull ? 2 : viewMode === "life" ? 4 : 12;
 
   useEffect(() => {
     setMounted(true);
@@ -192,15 +202,18 @@ export default function LifeklineChart({
   const chartData = useMemo((): ChartRow[] => annotatedData.map((d, i) => {
     const luckLabel = d.close >= d.open ? "吉" : "凶";
     const showLabel = !isLifeFull || (d.age ?? 0) % 5 === 0;
+    const bodyLow = Math.min(d.open, d.close);
+    const minBody = ySpan * 0.025;
     return {
       ...d,
       xLabel: d.xLabel ?? (d.isMonthly ? `${d.month}月` : d.age === 0 ? "出生" : `${d.age}岁`),
-      bodyBase: Math.min(d.open, d.close),
-      bodyHeight: Math.max(Math.abs(d.close - d.open), (yDomain[1] - yDomain[0]) * 0.022),
+      bodyBase: bodyLow - yMin,
+      bodyHeight: Math.max(Math.abs(d.close - d.open), minBody),
+      scoreRel: d.score - yMin,
       barLabel: showLabel ? luckLabel : "",
       index: i,
     };
-  }), [annotatedData, isLifeFull, yDomain]);
+  }), [annotatedData, isLifeFull, yMin, ySpan]);
 
   const xAxisLabel = viewMode === "month" ? "月份" : viewMode === "forward" ? "年份" : "年龄(岁)";
   const tickInterval = data.length <= 12 ? 0 : data.length <= 20 ? 1 : Math.max(1, Math.floor(data.length / 8));
@@ -288,7 +301,7 @@ export default function LifeklineChart({
             <ComposedChart
               data={chartData}
               margin={{ top: topMargin, right: 4, left: -8, bottom: bottomMargin }}
-              barCategoryGap={barGap}
+              barCategoryGap="8%"
             >
               <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
               <XAxis
@@ -301,7 +314,12 @@ export default function LifeklineChart({
                 height={data.length > 15 ? 48 : 30}
                 label={!compact ? { value: xAxisLabel, position: "insideBottom", offset: -4, fontSize: 9, fill: "var(--color-muted)" } : undefined}
               />
-              <YAxis domain={yDomain} ticks={yAxisTicks} allowDecimals={false} tick={{ fill: "var(--color-muted)", fontSize: 9 }}
+              <YAxis
+                domain={[0, ySpan]}
+                ticks={yAxisTickValues}
+                allowDecimals={false}
+                tick={{ fill: "var(--color-muted)", fontSize: 9 }}
+                tickFormatter={(v) => String(Math.round(Number(v) + yMin))}
                 label={!compact ? { value: "运势分", angle: -90, position: "insideLeft", fontSize: 9, fill: "var(--color-muted)" } : undefined}
               />
               <Tooltip content={({ active, payload }) => {
@@ -321,7 +339,7 @@ export default function LifeklineChart({
                   </div>
                 );
               }} />
-              <ReferenceLine y={(yDomain[0] + yDomain[1]) / 2} stroke="var(--color-border)" strokeDasharray="4 4" />
+              <ReferenceLine y={ySpan / 2} stroke="var(--color-border)" strokeDasharray="4 4" />
               <Bar dataKey="bodyBase" stackId="c" fill="transparent" maxBarSize={maxBarSize} />
               <Bar dataKey="bodyHeight" stackId="c" maxBarSize={maxBarSize}>
                 {chartData.map((entry, i) => (
@@ -337,7 +355,7 @@ export default function LifeklineChart({
               </Bar>
               <Customized
                 component={(props: { xAxisMap?: Record<string, { scale: { (v: string): number; bandwidth?: () => number } }>; yAxisMap?: Record<string, { scale: (v: number) => number }> }) => (
-                  <KlineTopMarkers {...props} data={chartData} viewMode={viewMode} />
+                  <KlineTopMarkers {...props} data={chartData} viewMode={viewMode} yMin={yMin} />
                 )}
               />
             </ComposedChart>
@@ -345,9 +363,15 @@ export default function LifeklineChart({
             <LineChart data={chartData} margin={{ top: 16, right: 4, left: -8, bottom: 4 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
               <XAxis dataKey="xLabel" type="category" tick={{ fill: "var(--color-muted)", fontSize: 8 }} interval={tickInterval} />
-              <YAxis domain={yDomain} ticks={yAxisTicks} allowDecimals={false} tick={{ fill: "var(--color-muted)", fontSize: 9 }} />
+              <YAxis
+                domain={[0, ySpan]}
+                ticks={yAxisTickValues}
+                allowDecimals={false}
+                tick={{ fill: "var(--color-muted)", fontSize: 9 }}
+                tickFormatter={(v) => String(Math.round(Number(v) + yMin))}
+              />
               <Tooltip />
-              <Line type="monotone" dataKey="score" stroke="#c45c48" strokeWidth={2} dot={false}
+              <Line type="monotone" dataKey="scoreRel" stroke="#c45c48" strokeWidth={2} dot={false}
                 activeDot={{ r: 4, onClick: (_, e) => handleBarPress((e as { index?: number }).index ?? 0) }} />
             </LineChart>
           )}
