@@ -222,10 +222,53 @@ export function getMockImageAnalysis(
 }
 
 /**
- * 默认不强制 mock；仅在环境变量显式开启时强制使用本地模拟分析。
+ * 环境变量 FORCE_MOCK_MODE=true 时强制 mock；
+ * 未配置 API Key 时 llm.ts 也会自动走 mock（无需 Key）。
  */
 export const MOCK_MODE = process.env.FORCE_MOCK_MODE === "true";
 
 export async function simulateAnalysisDelay(ms = 1500): Promise<void> {
   await new Promise((r) => setTimeout(r, ms));
+}
+
+const SPIRIT_MOCK_REPLIES = [
+  "我建议你先稳节奏、再抓重点。本周宜整理计划，把最重要的一件事推进一小步。以上仅供娱乐参考。",
+  "从你的问题来看，近期宜守不宜攻，先把基础打牢。有困惑时可以写下来，答案往往更清晰。",
+  "整体运势平稳向上，注意劳逸结合。重要决定不妨多给自己一两天缓冲时间。",
+  "我会陪你把选项摊开：先写下你最在意的 3 件事，再分别看每个选择的影响。我不替你做主，但帮你想得更清楚。",
+];
+
+export function getMockSpiritPetAnswer(params: {
+  question: string;
+  petName?: string;
+  petEmoji?: string;
+  personName?: string;
+}): string {
+  const petTitle = params.petName ? `${params.petEmoji ?? ""} ${params.petName}`.trim() : "AI 灵宠";
+  const seed = hashString(`${params.question}${params.personName ?? ""}`);
+  const body = pick(SPIRIT_MOCK_REPLIES, seed);
+  return params.petName ? `${petTitle}：${body}` : body;
+}
+
+export function getMockLiuyaoResult(params: {
+  question: string;
+  guaName: string;
+  guaDesc: string;
+  linesText: string;
+}): { analysis: string; advice: string; luck: "大吉" | "吉" | "平" | "凶" | "大凶" } {
+  const luckLevels = ["大吉", "吉", "平", "凶", "大凶"] as const;
+  const seed = hashString(params.question + params.guaName);
+  const luck = luckLevels[seed % luckLevels.length];
+  const adviceMap: Record<(typeof luckLevels)[number], string> = {
+    大吉: "天时地利人和，宜积极行动，把握当下机遇。",
+    吉: "整体向好，稳中求进，不可急躁。",
+    平: "守正待时，不宜大动，韬光养晦。",
+    凶: "谨慎行事，避免重大决策，以退为进。",
+    大凶: "诸事不宜，宜静守反思，等待转机。",
+  };
+  return {
+    analysis: `所问：「${params.question}」\n\n得${params.guaName}卦。${params.guaDesc}。\n\n${params.linesText}。`,
+    advice: adviceMap[luck],
+    luck,
+  };
 }

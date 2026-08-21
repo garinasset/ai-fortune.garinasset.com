@@ -42,7 +42,8 @@ export function getCurrentAge(birthYear: number, birthMonth = 1, birthDay = 1): 
   return Math.max(0, age);
 }
 
-function annotateExtremes(data: KlineData[]): KlineData[] {
+/** 标记 K 线中的大运之年（最佳阳K）与大凶之年（最差阴K） */
+export function annotateKlineExtremes(data: KlineData[]): KlineData[] {
   if (data.length === 0) return data;
   let bestIdx = -1;
   let worstIdx = -1;
@@ -138,7 +139,7 @@ export function generateFullLifeKline(info: BirthInfo): KlineData[] {
     prevClose = nextClose;
   }
 
-  return annotateExtremes(data);
+  return annotateKlineExtremes(data);
 }
 
 /** 从今年起未来 N 年的年 K 线（铺满横轴） */
@@ -161,7 +162,7 @@ export function generateForwardYearsKline(info: BirthInfo, count: number): Kline
     data.push(bar);
     prevClose = nextClose;
   }
-  return annotateExtremes(data);
+  return annotateKlineExtremes(data);
 }
 
 /** 某一自然年的 12 个月 K 线 */
@@ -201,7 +202,7 @@ export function generateMonthlyKline(info: BirthInfo, targetYear: number): Kline
     });
     prevClose = close;
   }
-  return annotateExtremes(data);
+  return annotateKlineExtremes(data);
 }
 
 /** 按推演年数生成主图表数据 */

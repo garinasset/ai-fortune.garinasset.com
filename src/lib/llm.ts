@@ -1,7 +1,16 @@
 import type { AnalysisResult, LLMConfig, BaziResult, BirthInfo, KlineData, OverallAnalysis } from "./types";
 import {
+  generateForwardYearsKline,
+  generateFullLifeKline,
+  generateMonthlyKline,
+  generateOverallAnalysis,
+  annotateKlineExtremes,
+} from "./fortune-chart";
+import {
   getMockBaziAnalysis,
   getMockImageAnalysis,
+  getMockLiuyaoResult,
+  getMockSpiritPetAnswer,
   simulateAnalysisDelay,
   MOCK_MODE,
 } from "./mock-analysis";
@@ -115,8 +124,9 @@ function parseAnalysisResponse(content: string): AnalysisResult {
   return parsed;
 }
 
+/** 无 API Key 或 FORCE_MOCK_MODE 时使用本地测试数据 */
 export function isMockMode(config?: LLMConfig): boolean {
-  return MOCK_MODE;
+  return MOCK_MODE || !config?.apiKey;
 }
 
 export async function analyzeBazi(
@@ -124,9 +134,6 @@ export async function analyzeBazi(
   bazi: BaziResult,
   baziText: string
 ): Promise<{ analysis: AnalysisResult; mock: boolean }> {
-  if (!config?.apiKey) {
-    throw new Error("未配置 AI API Key，请在服务端环境变量设置 DEEPSEEK_API_KEY");
-  }
   if (isMockMode(config)) {
     await simulateAnalysisDelay();
     return { analysis: getMockBaziAnalysis(bazi), mock: true };
@@ -142,9 +149,6 @@ export async function analyzeImage(
   imageBase64: string,
   description: string
 ): Promise<{ analysis: AnalysisResult; mock: boolean }> {
-  if (!config?.apiKey) {
-    throw new Error("未配置 AI API Key，请在服务端环境变量设置 DEEPSEEK_API_KEY");
-  }
   if (isMockMode(config)) {
     await simulateAnalysisDelay();
     return {
@@ -322,15 +326,21 @@ export async function generateLifeKlineWithAI(
     baziText?: string;
   }
 ): Promise<{ periodKline: KlineData[]; fullKline: KlineData[]; overall: OverallAnalysis }> {
-  if (!config?.apiKey) {
-    throw new Error("未配置 AI API Key，请在服务端环境变量设置 DEEPSEEK_API_KEY");
-  }
-
   const now = new Date();
   const currentYear = now.getFullYear();
   const currentAge = currentYear - params.birthInfo.year;
   const requestYears = clamp(1, 100, params.years || 10);
   const includeWholeLife = params.includeWholeLife ?? requestYears >= 100;
+
+  if (isMockMode(config)) {
+    await simulateAnalysisDelay();
+    const periodKline = generateForwardYearsKline(params.birthInfo, requestYears);
+    const fullKline = includeWholeLife
+      ? generateFullLifeKline(params.birthInfo)
+      : periodKline;
+    const overall = generateOverallAnalysis(fullKline, params.birthInfo);
+    return { periodKline, fullKline, overall };
+  }
 
   const birthText = formatBirthInfoForPrompt(params.birthInfo);
   const baziNote = params.baziText ? `\n八字参考：${params.baziText}` : "";
@@ -502,10 +512,14 @@ export async function generateLifeKlineWithAI(
     }));
   };
 
-  const periodKline = applyMarketWave(normalizePeriodKline(period.kline), "period");
-  const fullKline = full
-    ? applyMarketWave(normalizeFullKline(full.kline), "full")
-    : periodKline;
+  const periodKline = annotateKlineExtremes(
+    applyMarketWave(normalizePeriodKline(period.kline), "period"),
+  );
+  const fullKline = annotateKlineExtremes(
+    full
+      ? applyMarketWave(normalizeFullKline(full.kline), "full")
+      : periodKline,
+  );
   const overall: OverallAnalysis = {
     summary: String((full?.summary || period.summary || "").trim()),
     dimensions: normalizeDimensions(full?.dimensions ?? period.dimensions),
@@ -530,8 +544,9 @@ export async function generateMonthlyKlineWithAI(
     baziText?: string;
   }
 ): Promise<KlineData[]> {
-  if (!config?.apiKey) {
-    throw new Error("未配置 AI API Key，请在服务端环境变量设置 DEEPSEEK_API_KEY");
+  if (isMockMode(config)) {
+    await simulateAnalysisDelay();
+    return generateMonthlyKline(params.birthInfo, params.year);
   }
 
   const birthText = formatBirthInfoForPrompt(params.birthInfo);
@@ -582,7 +597,7 @@ export async function generateMonthlyKlineWithAI(
     prevClose = close;
   }
 
-  return rows;
+  return annotateKlineExtremes(rows);
 }
 
 export async function askSpiritPet(
@@ -596,8 +611,12 @@ export async function askSpiritPet(
   }
 ): Promise<{ answer: string; mock: boolean }> {
   if (!params.question.trim()) throw new Error("问题不能为空");
-  if (!config?.apiKey) {
-    throw new Error("未配置 AI API Key，请在服务端环境变量设置 DEEPSEEK_API_KEY");
+  if (isMockMode(config)) {
+    await simulateAnalysisDelay(800);
+    return {
+      answer: getMockSpiritPetAnswer(params),
+      mock: true,
+    };
   }
 
   const petTitle = params.petName ? `${params.petEmoji ?? ""} ${params.petName}`.trim() : "AI 灵宠";
@@ -628,8 +647,9 @@ export async function analyzeLiuyaoWithAI(
     linesText: string;
   }
 ): Promise<LiuyaoAiResult> {
-  if (!config?.apiKey) {
-    throw new Error("未配置 AI API Key，请在服务端环境变量设置 DEEPSEEK_API_KEY");
+  if (isMockMode(config)) {
+    await simulateAnalysisDelay();
+    return getMockLiuyaoResult(params);
   }
 
   const result = await completeJson<LiuyaoAiResult>(
