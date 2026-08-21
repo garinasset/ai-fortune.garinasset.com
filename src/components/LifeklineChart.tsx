@@ -2,8 +2,8 @@
 
 import { useState, useRef, useMemo, useEffect } from "react";
 import {
-  ComposedChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, LabelList,
-  ResponsiveContainer, CartesianGrid, Cell, ReferenceLine, Customized,
+  ComposedChart, LineChart, Line, XAxis, YAxis, Tooltip,
+  ResponsiveContainer, CartesianGrid, ReferenceLine, Customized,
 } from "recharts";
 import { Maximize2, Minimize2, BarChart2, TrendingUp, X, ChevronLeft } from "lucide-react";
 import type { BirthInfo, KlineData, KlineViewMode } from "@/lib/types";
@@ -90,6 +90,100 @@ function buildScoreAxisTicks(lo: number, hi: number): number[] {
   return [...new Set(ticks)].sort((a, b) => a - b);
 }
 
+type AxisScale = { scale: { (v: string): number; bandwidth?: () => number } };
+type ValueScale = { scale: (v: number) => number };
+
+function KlineCandles({
+  xAxisMap,
+  yAxisMap,
+  data,
+  maxBarSize,
+  labelFontSize,
+  yMin,
+  viewMode,
+  selectedIndex,
+  onPress,
+  onHover,
+}: {
+  xAxisMap?: Record<string, AxisScale>;
+  yAxisMap?: Record<string, ValueScale>;
+  data: ChartRow[];
+  maxBarSize: number;
+  labelFontSize: number;
+  yMin: number;
+  viewMode: KlineViewMode;
+  selectedIndex?: number;
+  onPress: (index: number) => void;
+  onHover: (index: number | null) => void;
+}) {
+  const xAxis = xAxisMap ? Object.values(xAxisMap)[0] : undefined;
+  const yAxis = yAxisMap ? Object.values(yAxisMap)[0] : undefined;
+  if (!xAxis?.scale || !yAxis?.scale) return null;
+
+  const bandW = xAxis.scale.bandwidth?.() ?? 8;
+  const barW = Math.min(bandW, maxBarSize);
+
+  const strokeFor = (entry: ChartRow, i: number) => {
+    if (entry.isBirth) return "#d4a574";
+    if (entry.isCurrent) return "#c45c48";
+    if (entry.isBestYear) return "#e05555";
+    if (entry.isWorstYear) return "#4a9e6a";
+    if (selectedIndex === i) return "#c45c48";
+    return "none";
+  };
+
+  const strokeWidthFor = (entry: ChartRow, i: number) => {
+    const isKey = entry.isBirth || entry.isCurrent || entry.isBestYear || entry.isWorstYear || selectedIndex === i;
+    if (isKey && (entry.isBirth || entry.isCurrent) && viewMode === "life") return 3;
+    if (isKey) return 2;
+    return 0;
+  };
+
+  return (
+    <g className="kline-candles">
+      {data.map((entry, i) => {
+        const cx = (xAxis.scale(entry.xLabel) ?? 0) + bandW / 2;
+        const x0 = cx - barW / 2;
+        const yTop = yAxis.scale(entry.bodyBase + entry.bodyHeight);
+        const yBottom = yAxis.scale(entry.bodyBase);
+        const bodyH = Math.max(yBottom - yTop, 1);
+        const fill = entry.close >= entry.open ? "#e05555" : "#4a9e6a";
+        const stroke = strokeFor(entry, i);
+        const strokeWidth = strokeWidthFor(entry, i);
+        const wickTop = yAxis.scale(entry.high - yMin);
+        const wickBottom = yAxis.scale(entry.low - yMin);
+
+        return (
+          <g
+            key={i}
+            cursor="pointer"
+            onClick={() => onPress(i)}
+            onMouseEnter={() => onHover(i)}
+            onMouseLeave={() => onHover(null)}
+          >
+            <line x1={cx} y1={wickTop} x2={cx} y2={wickBottom} stroke={fill} strokeWidth={1} />
+            <rect
+              x={x0}
+              y={yTop}
+              width={barW}
+              height={bodyH}
+              fill={fill}
+              stroke={stroke}
+              strokeWidth={strokeWidth}
+              rx={0.5}
+            />
+            {entry.barLabel ? (
+              <text x={cx} y={yBottom + 12} textAnchor="middle" fontSize={labelFontSize} fill="#888">
+                {entry.barLabel}
+              </text>
+            ) : null}
+          </g>
+        );
+      })}
+    </g>
+  );
+}
+
 function KlineTopMarkers({
   xAxisMap,
   yAxisMap,
@@ -97,8 +191,8 @@ function KlineTopMarkers({
   viewMode,
   yMin,
 }: {
-  xAxisMap?: Record<string, { scale: { (v: string): number; bandwidth?: () => number } }>;
-  yAxisMap?: Record<string, { scale: (v: number) => number }>;
+  xAxisMap?: Record<string, AxisScale>;
+  yAxisMap?: Record<string, ValueScale>;
   data: ChartRow[];
   viewMode: KlineViewMode;
   yMin: number;
@@ -150,6 +244,7 @@ export default function LifeklineChart({
   const [chartReady, setChartReady] = useState(false);
   const [chartMode, setChartMode] = useState<"kline" | "line">("kline");
   const [fullscreen, setFullscreen] = useState(false);
+  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
   const clickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -217,22 +312,6 @@ export default function LifeklineChart({
 
   const xAxisLabel = viewMode === "month" ? "月份" : viewMode === "forward" ? "年份" : "年龄(岁)";
   const tickInterval = data.length <= 12 ? 0 : data.length <= 20 ? 1 : Math.max(1, Math.floor(data.length / 8));
-
-  const getCellStroke = (entry: KlineData, i: number) => {
-    if (entry.isBirth) return "#d4a574";
-    if (entry.isCurrent) return "#c45c48";
-    if (entry.isBestYear) return "#e05555";
-    if (entry.isWorstYear) return "#4a9e6a";
-    if (selectedIndex === i) return "#c45c48";
-    return "none";
-  };
-
-  const getCellStrokeWidth = (entry: KlineData, i: number) => {
-    const isKey = entry.isBirth || entry.isCurrent || entry.isBestYear || entry.isWorstYear || selectedIndex === i;
-    if (isKey && (entry.isBirth || entry.isCurrent) && viewMode === "life") return 3;
-    if (isKey) return 2;
-    return 0;
-  };
 
   const handleBarPress = (index: number) => {
     if (empty) return;
@@ -322,7 +401,10 @@ export default function LifeklineChart({
                 tickFormatter={(v) => String(Math.round(Number(v) + yMin))}
                 label={!compact ? { value: "运势分", angle: -90, position: "insideLeft", fontSize: 9, fill: "var(--color-muted)" } : undefined}
               />
-              <Tooltip content={({ active, payload }) => {
+              <Tooltip
+                active={hoverIndex !== null}
+                payload={hoverIndex !== null ? [{ payload: chartData[hoverIndex] }] : []}
+                content={({ active, payload }) => {
                 if (!active || !payload?.[0]) return null;
                 const d = payload[0].payload as ChartRow;
                 const topLabel = getTopMarkerLabel(d, viewMode);
@@ -340,22 +422,22 @@ export default function LifeklineChart({
                 );
               }} />
               <ReferenceLine y={ySpan / 2} stroke="var(--color-border)" strokeDasharray="4 4" />
-              <Bar dataKey="bodyBase" stackId="c" fill="transparent" maxBarSize={maxBarSize} />
-              <Bar dataKey="bodyHeight" stackId="c" maxBarSize={maxBarSize}>
-                {chartData.map((entry, i) => (
-                  <Cell key={i}
-                    fill={entry.close >= entry.open ? "#e05555" : "#4a9e6a"}
-                    stroke={getCellStroke(entry, i)}
-                    strokeWidth={getCellStrokeWidth(entry, i)}
-                    cursor="pointer"
-                    onClick={() => handleBarPress(i)}
-                  />
-                ))}
-                <LabelList dataKey="barLabel" position="bottom" fontSize={labelFontSize} fill="#888" />
-              </Bar>
               <Customized
-                component={(props: { xAxisMap?: Record<string, { scale: { (v: string): number; bandwidth?: () => number } }>; yAxisMap?: Record<string, { scale: (v: number) => number }> }) => (
-                  <KlineTopMarkers {...props} data={chartData} viewMode={viewMode} yMin={yMin} />
+                component={(props: { xAxisMap?: Record<string, AxisScale>; yAxisMap?: Record<string, ValueScale> }) => (
+                  <>
+                    <KlineCandles
+                      {...props}
+                      data={chartData}
+                      maxBarSize={maxBarSize}
+                      labelFontSize={labelFontSize}
+                      yMin={yMin}
+                      viewMode={viewMode}
+                      selectedIndex={selectedIndex}
+                      onPress={handleBarPress}
+                      onHover={setHoverIndex}
+                    />
+                    <KlineTopMarkers {...props} data={chartData} viewMode={viewMode} yMin={yMin} />
+                  </>
                 )}
               />
             </ComposedChart>
