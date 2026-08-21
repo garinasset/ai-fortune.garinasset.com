@@ -23,6 +23,7 @@ interface SpiritPetDisplayProps {
 
 export default function SpiritPetDisplay({
   pet,
+  personName,
   compact,
   showWelcome,
   onGoAwakening,
@@ -56,7 +57,7 @@ export default function SpiritPetDisplay({
         </div>
 
         <p className="relative body-text">
-          你好主人，我是你的专属 AI 守护灵 ·{" "}
+          你好{personName || "主人"}，我是你的专属 AI 守护灵 ·{" "}
           <span className="font-semibold" style={{ color: pet.elementColor }}>
             {pet.fullName}
           </span>

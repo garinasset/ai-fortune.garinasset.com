@@ -4,13 +4,14 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import ImageUpload from "@/components/ImageUpload";
 import AnalysisPanel from "@/components/AnalysisPanel";
 import XiangScanOverlay from "@/components/XiangScanOverlay";
+import GenerationOverlay from "@/components/GenerationOverlay";
 import PaywallModal from "@/components/PaywallModal";
 import ReportPosterButton, { SharePosterButton } from "@/components/ReportPosterButton";
 import { canUse, incrementUsage, getRemaining, addHistory } from "@/lib/user-store";
 import { saveRecord, buildPersonKey, buildPersonLabel } from "@/lib/record-store";
-import { useApp } from "@/context/AppContext";
 import PrimaryPersonModal from "@/components/PrimaryPersonModal";
-import { ensurePrimaryPersonBeforeCalc } from "@/lib/person-store";
+import { ensurePrimaryPersonBeforeCalc, getPersonDisplayName } from "@/lib/person-store";
+import { getEffectiveBirthInfo } from "@/lib/birth-store";
 import XiangDemoDiagram from "@/components/XiangDemoDiagram";
 import BoostFortuneButton from "@/components/BoostFortuneButton";
 import SegmentedControl from "@/components/ui/SegmentedControl";
@@ -25,20 +26,18 @@ const XIANG_TABS = [
   { id: "face" as const, label: "面相" },
 ];
 
-const SCAN_MS = 3000;
-
 export default function XiangHubPanel() {
-  const { user } = useApp();
   const [tab, setTab] = useState<Tab>("palm");
   const [preview, setPreview] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [analyzeReady, setAnalyzeReady] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [analyzeError, setAnalyzeError] = useState<string | null>(null);
   const [paywall, setPaywall] = useState(false);
   const [primaryModal, setPrimaryModal] = useState(false);
   const [pendingType, setPendingType] = useState<Tab>("palm");
   const pendingPreview = useRef<string | null>(null);
+  const resultRef = useRef<AnalysisResult | null>(null);
   const remaining = getRemaining("xiang");
 
   useEffect(() => {
@@ -50,45 +49,56 @@ export default function XiangHubPanel() {
     }
   }, []);
 
-  const runAnalyze = useCallback(async () => {
-    const image = pendingPreview.current;
-    if (!image) return;
-    setLoading(true);
-    setAnalyzeError(null);
-    try {
-      const { analysis } = await analyzeXiangImage(pendingType, image);
-      setResult(analysis);
-      incrementUsage("xiang");
-      addHistory({
-        type: "xiang",
-        title: pendingType === "palm" ? "手相分析" : "面相分析",
-        data: analysis,
-      });
-      const personName = user?.nickname ?? "看相用户";
-      saveRecord({
-        type: "xiang",
-        personKey: buildPersonKey(personName),
-        personName,
-        personLabel: personName,
-        title: pendingType === "palm" ? "手相看相" : "面相看相",
-        summary: analysis.summary,
-        data: { ...analysis, tab: pendingType },
-      });
-      saveSessionResult("xiang", { tab: pendingType, preview: image, result: analysis });
-    } catch {
-      setAnalyzeError("分析暂时失败，请重试或更换图片");
-      setResult(null);
-    } finally {
-      setLoading(false);
-      setScanning(false);
-    }
-  }, [pendingType, user?.nickname]);
-
   useEffect(() => {
     if (!scanning) return;
-    const timer = setTimeout(runAnalyze, SCAN_MS);
-    return () => clearTimeout(timer);
-  }, [scanning, runAnalyze]);
+    const image = pendingPreview.current;
+    if (!image) return;
+
+    setAnalyzeReady(false);
+    resultRef.current = null;
+
+    (async () => {
+      setAnalyzeError(null);
+      try {
+        const { analysis } = await analyzeXiangImage(pendingType, image);
+        resultRef.current = analysis;
+        setAnalyzeReady(true);
+      } catch {
+        setAnalyzeError("分析暂时失败，请重试或更换图片");
+        setScanning(false);
+      }
+    })();
+  }, [scanning, pendingType]);
+
+  const onAnalyzeComplete = useCallback(() => {
+    const analysis = resultRef.current;
+    const image = pendingPreview.current;
+    if (!analysis || !image) {
+      setScanning(false);
+      return;
+    }
+
+    setResult(analysis);
+    incrementUsage("xiang");
+    addHistory({
+      type: "xiang",
+      title: pendingType === "palm" ? "手相分析" : "面相分析",
+      data: analysis,
+    });
+    const birthInfo = getEffectiveBirthInfo();
+    const personName = getPersonDisplayName(birthInfo, "看相用户");
+    saveRecord({
+      type: "xiang",
+      personKey: buildPersonKey(personName, birthInfo ?? undefined),
+      personName,
+      personLabel: birthInfo ? buildPersonLabel(personName, birthInfo) : personName,
+      title: pendingType === "palm" ? "手相看相" : "面相看相",
+      summary: analysis.summary,
+      data: { ...analysis, tab: pendingType },
+    });
+    saveSessionResult("xiang", { tab: pendingType, preview: image, result: analysis });
+    setScanning(false);
+  }, [pendingType]);
 
   const startAnalyze = () => {
     if (!preview) return;
@@ -123,7 +133,16 @@ export default function XiangHubPanel() {
       )}
 
       {scanning && preview && (
-        <XiangScanOverlay imageUrl={preview} label={loading ? "命相解析中…" : scanLabel} />
+        <div className="relative min-h-[280px]">
+          <XiangScanOverlay imageUrl={preview} label={analyzeReady ? "命相解析完成…" : scanLabel} />
+          <GenerationOverlay
+            embedded
+            taskReady={analyzeReady}
+            onComplete={onAnalyzeComplete}
+            title="正在看相"
+            icon="☯"
+          />
+        </div>
       )}
 
       {!preview && !result && !scanning && (

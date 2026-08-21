@@ -12,6 +12,11 @@ interface BirthFormProps {
   compact?: boolean;
   /** 为 false 时不自动写入当前测算人（由 onSubmit 自行处理） */
   syncActivePerson?: boolean;
+  /** 字段变化时回调（与其他表单项组合提交时使用） */
+  onValuesChange?: (info: BirthInfo) => void;
+  /** 隐藏底部提交按钮（由外部按钮触发表单提交） */
+  hideSubmit?: boolean;
+  formId?: string;
 }
 
 export default function BirthForm({
@@ -20,6 +25,9 @@ export default function BirthForm({
   submitLabel = "生成人生 K 线",
   compact,
   syncActivePerson = true,
+  onValuesChange,
+  hideSubmit,
+  formId,
 }: BirthFormProps) {
   const now = new Date();
   const [name, setName] = useState("");
@@ -57,6 +65,11 @@ export default function BirthForm({
     calendar,
   });
 
+  useEffect(() => {
+    if (!loaded || !onValuesChange) return;
+    onValuesChange(buildInfo());
+  }, [loaded, name, year, month, day, hour, minute, gender, calendar, onValuesChange]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const info = saveBirthInfo(buildInfo());
@@ -72,7 +85,7 @@ export default function BirthForm({
   if (!loaded) return null;
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-3">
+    <form id={formId} onSubmit={handleSubmit} className="space-y-3">
       {!compact && (
         <div>
           <label className="app-label">姓名（选填）</label>
@@ -130,9 +143,11 @@ export default function BirthForm({
         </div>
       )}
 
-      <button type="submit" className="app-btn" disabled={loading}>
-        {loading ? "分析中..." : submitLabel}
-      </button>
+      {!hideSubmit && (
+        <button type="submit" className="app-btn" disabled={loading}>
+          {loading ? "分析中..." : submitLabel}
+        </button>
+      )}
     </form>
   );
 }

@@ -1,6 +1,6 @@
 import type { BirthInfo, SpiritPetAdvice, SpiritPetProfile } from "./types";
 import { getEffectiveBirthInfo, normalizeBirthInfo, isValidBirthInfo } from "./birth-store";
-import { getPrimaryPerson, getActivePersonId } from "./person-store";
+import { getPrimaryPerson, getActivePersonId, getPersonDisplayName } from "./person-store";
 import { getPersonKey, getOrCreateSpiritPet, generateSpiritPetAdvice } from "./spirit-pet";
 
 export type SpiritPetPagePhase = "initializing" | "onboarding" | "claim" | "generating" | "companion";
@@ -47,7 +47,7 @@ export function resolveSpiritPetPageState(): SpiritPetPageSnapshot {
       pet: profile,
       birth,
       personKey,
-      personName: primary?.name ?? birth.name ?? "主人",
+      personName: getPersonDisplayName(birth, primary?.name ?? "主人"),
       advice: generateSpiritPetAdvice(birth, profile, "day"),
     };
   } catch {

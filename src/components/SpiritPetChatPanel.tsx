@@ -8,7 +8,7 @@ import { getEffectiveBirthInfo, loadBirthInfo } from "@/lib/birth-store";
 import { useApp } from "@/context/AppContext";
 import PaywallModal from "@/components/PaywallModal";
 import PrimaryPersonModal from "@/components/PrimaryPersonModal";
-import { ensurePrimaryPersonBeforeCalc } from "@/lib/person-store";
+import { ensurePrimaryPersonBeforeCalc, getPersonDisplayName } from "@/lib/person-store";
 import { grantSpiritPowerForTask } from "@/lib/spirit-pet-tasks";
 import { getSpiritAbilityPrompt } from "@/lib/spirit-pet-ask";
 import SpiritPetDisplay from "@/components/SpiritPetDisplay";
@@ -81,16 +81,18 @@ export default function SpiritPetChatPanel({
     el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
   }, [messages.length, loading]);
 
+  const displayName = getPersonDisplayName(birthInfo, ownerName);
+
   const appendPetGreeting = useCallback(() => {
     if (!pet || messages.length > 0) return;
     setMessages([
       {
         id: "welcome",
         role: "pet",
-        text: `${pet.emoji} 我是${pet.fullName}，${ownerName}，有什么想问的随时跟我说～`,
+        text: `${pet.emoji} 我是${pet.fullName}，${displayName}，有什么想问的随时跟我说～`,
       },
     ]);
-  }, [pet, ownerName, messages.length]);
+  }, [pet, displayName, messages.length]);
 
   useEffect(() => {
     appendPetGreeting();
@@ -134,7 +136,7 @@ export default function SpiritPetChatPanel({
             birthInfo,
             petName: pet?.fullName,
             petEmoji: pet?.emoji,
-            personName: birthInfo.name || user?.nickname || ownerName,
+            personName: getPersonDisplayName(birthInfo, user?.nickname || ownerName),
           }),
         });
         const data = await res.json();
@@ -158,7 +160,7 @@ export default function SpiritPetChatPanel({
       incrementUsage("aiAsk");
       setRemaining(getRemaining("aiAsk"));
       addHistory({ type: "aiAsk", title: q.slice(0, 30), data: { q, ans, birthInfo } });
-      const personName = birthInfo.name || user?.nickname || ownerName;
+      const personName = getPersonDisplayName(birthInfo, user?.nickname || ownerName);
       saveRecord({
         type: "aiAsk",
         personKey: buildPersonKey(personName, birthInfo),
@@ -303,7 +305,7 @@ export default function SpiritPetChatPanel({
       <div className={`fixed inset-0 z-[75] flex items-end justify-center bg-black/50 px-3 pb-4 backdrop-blur-sm sm:items-center ${className}`}>
         <div className="flex max-h-[92vh] w-full max-w-lg flex-col gap-3 overflow-y-auto">
           {showPetProfile && pet && (
-            <SpiritPetDisplay pet={pet} personName={ownerName} compact showInteractLink={false} />
+            <SpiritPetDisplay pet={pet} personName={displayName} compact showInteractLink={false} />
           )}
           {chatBody}
         </div>
@@ -317,7 +319,7 @@ export default function SpiritPetChatPanel({
     <section id="spirit-pet-chat" className={`page-section ${className}`}>
       {showPetProfile && pet && (
         <div className="mb-3">
-          <SpiritPetDisplay pet={pet} personName={ownerName} compact showInteractLink={false} />
+          <SpiritPetDisplay pet={pet} personName={displayName} compact showInteractLink={false} />
         </div>
       )}
       {chatBody}

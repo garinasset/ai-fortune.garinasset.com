@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import BirthForm from "@/components/BirthForm";
 import GenerationOverlay from "@/components/GenerationOverlay";
 import AnalysisPanel from "@/components/AnalysisPanel";
@@ -10,7 +10,7 @@ import BoostFortuneButton from "@/components/BoostFortuneButton";
 import { canUse, incrementUsage, getRemaining } from "@/lib/user-store";
 import { saveRecord, buildPersonKey, buildPersonLabel } from "@/lib/record-store";
 import { saveBirthInfo } from "@/lib/birth-store";
-import { ensurePrimaryPersonBeforeCalc } from "@/lib/person-store";
+import { ensurePrimaryPersonBeforeCalc, getPersonDisplayName } from "@/lib/person-store";
 import { saveSessionResult, loadSessionResult, clearSessionResult } from "@/lib/session-result-cache";
 import type { BirthInfo, BaziResult, AnalysisResult } from "@/lib/types";
 
@@ -28,6 +28,8 @@ export default function BaziHubPanel() {
   const [error, setError] = useState<string | null>(null);
   const [paywall, setPaywall] = useState(false);
   const [primaryModal, setPrimaryModal] = useState(false);
+  const [generateReady, setGenerateReady] = useState(false);
+  const generateResultRef = useRef<BaziSessionState | null>(null);
   const remaining = getRemaining("lifekline");
 
   useEffect(() => {
@@ -54,8 +56,11 @@ export default function BaziHubPanel() {
     setPhase("generating");
   };
 
-  const onGenerateComplete = useCallback(() => {
-    if (!birthInfo) return;
+  useEffect(() => {
+    if (phase !== "generating" || !birthInfo) return;
+    setGenerateReady(false);
+    generateResultRef.current = null;
+
     (async () => {
       try {
         const res = await fetch("/api/analyze/bazi", {
@@ -67,39 +72,49 @@ export default function BaziHubPanel() {
         if (!res.ok) throw new Error(data.error ?? "八字分析失败");
         if (!data?.bazi || !data?.analysis) throw new Error("八字返回数据不完整");
 
-        const baziResult = data.bazi as BaziResult;
-        const aiAnalysis = data.analysis as AnalysisResult;
-        setBazi(baziResult);
-        setAnalysis(aiAnalysis);
-        incrementUsage("lifekline");
-        saveBirthInfo(birthInfo);
-        const personName = birthInfo.name || `命理者${birthInfo.year}`;
-        saveRecord({
-          type: "bazi",
-          personKey: buildPersonKey(personName, birthInfo),
-          personName,
-          personLabel: buildPersonLabel(personName, birthInfo),
-          title: "八字排盘",
-          summary: aiAnalysis.summary,
-          data: { birthInfo, bazi: baziResult, analysis: aiAnalysis },
-        });
-        saveSessionResult("bazi", { birthInfo, bazi: baziResult, analysis: aiAnalysis });
-        setPhase("result");
+        generateResultRef.current = {
+          birthInfo,
+          bazi: data.bazi as BaziResult,
+          analysis: data.analysis as AnalysisResult,
+        };
+        setGenerateReady(true);
       } catch (err) {
         console.error("bazi generate failed", err);
         setError(err instanceof Error ? err.message : "八字分析失败，请稍后重试");
         setPhase("form");
       }
     })();
-  }, [birthInfo]);
+  }, [phase, birthInfo]);
+
+  const onGenerateComplete = useCallback(() => {
+    const pending = generateResultRef.current;
+    if (!pending) return;
+
+    setBazi(pending.bazi);
+    setAnalysis(pending.analysis);
+    incrementUsage("lifekline");
+    saveBirthInfo(pending.birthInfo);
+    const personName = getPersonDisplayName(pending.birthInfo, `命理者${pending.birthInfo.year}`);
+    saveRecord({
+      type: "bazi",
+      personKey: buildPersonKey(personName, pending.birthInfo),
+      personName,
+      personLabel: buildPersonLabel(personName, pending.birthInfo),
+      title: "八字排盘",
+      summary: pending.analysis.summary,
+      data: { birthInfo: pending.birthInfo, bazi: pending.bazi, analysis: pending.analysis },
+    });
+    saveSessionResult("bazi", pending);
+    setPhase("result");
+  }, []);
 
   if (phase === "generating") {
     return (
       <div className="relative min-h-[320px]">
         <GenerationOverlay
           embedded
+          taskReady={generateReady}
           onComplete={onGenerateComplete}
-          duration={5000}
           title="正在排盘"
           icon="☯"
         />
@@ -111,7 +126,7 @@ export default function BaziHubPanel() {
     return (
       <div className="page-section">
         <p className="caption mb-3 text-app-muted">
-          四柱八字 · 命格解读 · 剩余免费 {remaining} 次
+          四柱八字 · {getPersonDisplayName(birthInfo)} · 剩余免费 {remaining} 次
         </p>
         <AnalysisPanel result={analysis} bazi={bazi} />
         <div className="mt-4 space-y-2">

@@ -655,6 +655,8 @@ export async function analyzeLiuyaoWithAI(
     guaName: string;
     guaDesc: string;
     linesText: string;
+    birthInfo?: BirthInfo;
+    baziText?: string;
   }
 ): Promise<LiuyaoAiResult> {
   if (isMockMode(config)) {
@@ -662,10 +664,13 @@ export async function analyzeLiuyaoWithAI(
     return getMockLiuyaoResult(params);
   }
 
+  const birthText = formatBirthInfoForPrompt(params.birthInfo);
+  const baziNote = params.baziText ? `\n八字：${params.baziText}` : "";
+
   const result = await completeJson<LiuyaoAiResult>(
     requireLLMConfig(config),
-    `你是精通周易六爻的专业命理师。\n请严格输出 json，格式：{"analysis":"...","advice":"...","luck":"大吉|吉|平|凶|大凶"}。\nanalysis 控制在 120-260 字，advice 控制在 30-80 字，输出中文。`,
-    `问题：${params.question}\n本卦：${params.guaName}卦\n卦辞：${params.guaDesc}\n六爻：${params.linesText}`,
+    `你是精通周易六爻的专业命理师。\n请严格输出 json，格式：{"analysis":"...","advice":"...","luck":"大吉|吉|平|凶|大凶"}。\nanalysis 控制在 120-260 字，advice 控制在 30-80 字，输出中文。结合问卦者生辰与卦象综合断事。`,
+    `问卦者：${birthText}${baziNote}\n问题：${params.question}\n本卦：${params.guaName}卦\n卦辞：${params.guaDesc}\n六爻：${params.linesText}`,
   );
 
   if (!result?.analysis || !result?.advice || !result?.luck) {

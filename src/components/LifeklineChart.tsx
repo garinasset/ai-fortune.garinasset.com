@@ -109,7 +109,29 @@ export default function LifeklineChart({
   const isLifeFull = viewMode === "life" && data.length > 50;
   const annotatedData = useMemo(() => annotateKlineExtremes(data), [data]);
   const hasTopMarkers = annotatedData.some((d) => getTopMarkerLabel(d, viewMode));
-  const height = compact ? 210 : fullscreen ? 480 : 320;
+  const height = compact ? 260 : fullscreen ? 560 : 400;
+
+  const yDomain = useMemo((): [number, number] => {
+    if (!annotatedData.length) return [0, 100];
+    let min = Infinity;
+    let max = -Infinity;
+    for (const d of annotatedData) {
+      min = Math.min(min, d.low, d.open, d.close);
+      max = Math.max(max, d.high, d.open, d.close);
+    }
+    const span = max - min;
+    const pad = Math.max(6, span * 0.15);
+    let lo = Math.max(0, Math.floor(min - pad));
+    let hi = Math.min(100, Math.ceil(max + pad));
+    if (hi - lo < 24) {
+      const mid = (hi + lo) / 2;
+      lo = Math.max(0, Math.floor(mid - 12));
+      hi = Math.min(100, Math.ceil(mid + 12));
+    }
+    return [lo, hi];
+  }, [annotatedData]);
+
+  const maxBarSize = isLifeFull ? 3 : viewMode === "life" ? 5 : 12;
 
   useEffect(() => {
     setMounted(true);
@@ -139,11 +161,11 @@ export default function LifeklineChart({
       ...d,
       xLabel: d.xLabel ?? (d.isMonthly ? `${d.month}月` : d.age === 0 ? "出生" : `${d.age}岁`),
       bodyBase: Math.min(d.open, d.close),
-      bodyHeight: Math.abs(d.close - d.open) || 0.6,
+      bodyHeight: Math.max(Math.abs(d.close - d.open), (yDomain[1] - yDomain[0]) * 0.018),
       barLabel: showLabel ? luckLabel : "",
       index: i,
     };
-  }), [annotatedData, isLifeFull]);
+  }), [annotatedData, isLifeFull, yDomain]);
 
   const xAxisLabel = viewMode === "month" ? "月份" : viewMode === "forward" ? "年份" : "年龄(岁)";
   const tickInterval = data.length <= 12 ? 0 : data.length <= 20 ? 1 : Math.max(1, Math.floor(data.length / 8));
@@ -231,7 +253,7 @@ export default function LifeklineChart({
             <ComposedChart
               data={chartData}
               margin={{ top: topMargin, right: 4, left: -8, bottom: bottomMargin }}
-              barCategoryGap="8%"
+              barCategoryGap="18%"
             >
               <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
               <XAxis
@@ -244,7 +266,7 @@ export default function LifeklineChart({
                 height={data.length > 15 ? 48 : 30}
                 label={!compact ? { value: xAxisLabel, position: "insideBottom", offset: -4, fontSize: 9, fill: "var(--color-muted)" } : undefined}
               />
-              <YAxis domain={[0, 100]} tick={{ fill: "var(--color-muted)", fontSize: 9 }}
+              <YAxis domain={yDomain} tick={{ fill: "var(--color-muted)", fontSize: 9 }}
                 label={!compact ? { value: "运势分", angle: -90, position: "insideLeft", fontSize: 9, fill: "var(--color-muted)" } : undefined}
               />
               <Tooltip content={({ active, payload }) => {
@@ -264,9 +286,9 @@ export default function LifeklineChart({
                   </div>
                 );
               }} />
-              <ReferenceLine y={50} stroke="var(--color-border)" strokeDasharray="4 4" />
-              <Bar dataKey="bodyBase" stackId="c" fill="transparent" maxBarSize={isLifeFull ? 5 : viewMode === "life" ? 6 : 28} />
-              <Bar dataKey="bodyHeight" stackId="c" maxBarSize={isLifeFull ? 5 : viewMode === "life" ? 6 : 28}>
+              <ReferenceLine y={(yDomain[0] + yDomain[1]) / 2} stroke="var(--color-border)" strokeDasharray="4 4" />
+              <Bar dataKey="bodyBase" stackId="c" fill="transparent" maxBarSize={maxBarSize} />
+              <Bar dataKey="bodyHeight" stackId="c" maxBarSize={maxBarSize}>
                 {chartData.map((entry, i) => (
                   <Cell key={i}
                     fill={entry.close >= entry.open ? "#e05555" : "#4a9e6a"}
@@ -288,7 +310,7 @@ export default function LifeklineChart({
             <LineChart data={chartData} margin={{ top: 16, right: 4, left: -8, bottom: 4 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
               <XAxis dataKey="xLabel" type="category" tick={{ fill: "var(--color-muted)", fontSize: 8 }} interval={tickInterval} />
-              <YAxis domain={[0, 100]} tick={{ fill: "var(--color-muted)", fontSize: 9 }} />
+              <YAxis domain={yDomain} tick={{ fill: "var(--color-muted)", fontSize: 9 }} />
               <Tooltip />
               <Line type="monotone" dataKey="score" stroke="#c45c48" strokeWidth={2} dot={false}
                 activeDot={{ r: 4, onClick: (_, e) => handleBarPress((e as { index?: number }).index ?? 0) }} />
@@ -318,7 +340,7 @@ export default function LifeklineChart({
     <>
       <div className={compact ? "app-card !p-3" : "app-card !p-3"}>
         {!mounted ? (
-          <div className="animate-pulse rounded-xl bg-app-border/30" style={{ height: compact ? 210 : 320 }} />
+          <div className="animate-pulse rounded-xl bg-app-border/30" style={{ height: compact ? 260 : 400 }} />
         ) : (
           chartContent
         )}

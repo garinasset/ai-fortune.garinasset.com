@@ -9,7 +9,7 @@ import { useApp } from "@/context/AppContext";
 import PaywallModal from "@/components/PaywallModal";
 import PrimaryPersonModal from "@/components/PrimaryPersonModal";
 import BirthForm from "@/components/BirthForm";
-import { ensurePrimaryPersonBeforeCalc } from "@/lib/person-store";
+import { ensurePrimaryPersonBeforeCalc, getPersonDisplayName } from "@/lib/person-store";
 import { grantSpiritPowerForTask } from "@/lib/spirit-pet-tasks";
 import { getSpiritAbilityPrompt } from "@/lib/spirit-pet-ask";
 import type { BirthInfo, SpiritPetProfile } from "@/lib/types";
@@ -108,7 +108,7 @@ export default function AiAskBox({
           birthInfo,
           petName: fromSpiritPet && pet ? pet.fullName : undefined,
           petEmoji: fromSpiritPet && pet ? pet.emoji : undefined,
-          personName: birthInfo.name || user?.nickname || ownerName,
+          personName: getPersonDisplayName(birthInfo, user?.nickname || ownerName),
         }),
       });
       const data = await res.json();
@@ -126,7 +126,7 @@ export default function AiAskBox({
     incrementUsage("aiAsk");
     setRemaining(getRemaining("aiAsk"));
     addHistory({ type: "aiAsk", title: q.slice(0, 30), data: { q, ans, birthInfo } });
-    const personName = birthInfo.name || user?.nickname || ownerName;
+    const personName = getPersonDisplayName(birthInfo, user?.nickname || ownerName);
     saveRecord({
       type: "aiAsk",
       personKey: buildPersonKey(personName, birthInfo),

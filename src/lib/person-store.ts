@@ -7,15 +7,24 @@ const BIRTH_KEY = "ai-fortune-birth";
 
 export const PRIMARY_PERSON_NAME = "我";
 
+function resolveStoredPersonName(birthInfo: BirthInfo): string {
+  const trimmed = birthInfo.name?.trim();
+  if (trimmed && trimmed !== PRIMARY_PERSON_NAME) return trimmed;
+  return `命理者${birthInfo.year}`;
+}
+
 function normalizePerson(p: SavedPerson): SavedPerson | null {
   if (!p?.id || !p.birthInfo || !isValidBirthInfo(p.birthInfo)) return null;
   try {
     const birthInfo = normalizeBirthInfo(p.birthInfo);
     const isPrimary = p.isPrimary === true || p.name === PRIMARY_PERSON_NAME;
+    const name = isPrimary
+      ? resolveStoredPersonName(birthInfo)
+      : (p.name?.trim() || birthInfo.name?.trim() || `测算人`);
     return {
       ...p,
-      name: isPrimary ? PRIMARY_PERSON_NAME : p.name,
-      birthInfo,
+      name,
+      birthInfo: { ...birthInfo, name: birthInfo.name?.trim() || name },
       isPrimary,
     };
   } catch {
@@ -49,16 +58,18 @@ export function getPrimaryPerson(): SavedPerson | null {
 }
 
 export function addPrimaryPerson(birthInfo: BirthInfo): SavedPerson {
+  const displayName = resolveStoredPersonName(birthInfo);
+  const normalizedBirth = { ...normalizeBirthInfo(birthInfo), name: birthInfo.name?.trim() || displayName };
   const existing = getPrimaryPerson();
   if (existing) {
-    updateSavedPerson(existing.id, { birthInfo, name: PRIMARY_PERSON_NAME });
+    updateSavedPerson(existing.id, { birthInfo: normalizedBirth, name: displayName });
     setActivePerson(existing.id);
     return getPrimaryPerson()!;
   }
   const person: SavedPerson = {
     id: Date.now().toString(36) + "p",
-    name: PRIMARY_PERSON_NAME,
-    birthInfo: { ...normalizeBirthInfo(birthInfo), name: PRIMARY_PERSON_NAME },
+    name: displayName,
+    birthInfo: normalizedBirth,
     createdAt: new Date().toISOString(),
     isPrimary: true,
   };
@@ -86,19 +97,30 @@ export function updateSavedPerson(id: string, patch: Partial<Pick<SavedPerson, "
   const list = getSavedPersons().map((p) => {
     if (p.id !== id) return p;
     const isPrimary = p.isPrimary;
-    const name = isPrimary ? PRIMARY_PERSON_NAME : (patch.name ?? p.name);
     const nextBirth = patch.birthInfo
       ? (isValidBirthInfo(patch.birthInfo) ? normalizeBirthInfo(patch.birthInfo) : patch.birthInfo)
       : p.birthInfo;
+    const rawName = patch.name?.trim() ?? patch.birthInfo?.name?.trim() ?? nextBirth?.name?.trim() ?? p.name;
+    const name = isPrimary && nextBirth
+      ? (rawName && rawName !== PRIMARY_PERSON_NAME ? rawName : resolveStoredPersonName(nextBirth))
+      : (rawName || p.name);
     return {
       ...p,
       ...patch,
       name,
-      birthInfo: nextBirth ? { ...nextBirth, name: name || nextBirth.name } : p.birthInfo,
+      birthInfo: nextBirth ? { ...nextBirth, name: nextBirth.name?.trim() || name } : p.birthInfo,
       isPrimary,
     };
   });
   savePersons(list);
+}
+
+/** 展示用姓名：优先表单填写，避免一律显示「我」 */
+export function getPersonDisplayName(birthInfo?: BirthInfo | null, fallback = "测算人"): string {
+  const trimmed = birthInfo?.name?.trim();
+  if (trimmed && trimmed !== PRIMARY_PERSON_NAME) return trimmed;
+  if (birthInfo?.year) return resolveStoredPersonName(birthInfo);
+  return fallback;
 }
 
 export function deleteSavedPerson(id: string): boolean {

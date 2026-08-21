@@ -17,7 +17,7 @@ import {
   saveRecord, buildPersonKey, buildPersonLabel,
 } from "@/lib/record-store";
 import { saveBirthInfo } from "@/lib/birth-store";
-import { ensurePrimaryPersonBeforeCalc } from "@/lib/person-store";
+import { ensurePrimaryPersonBeforeCalc, getPersonDisplayName } from "@/lib/person-store";
 import { saveSessionResult, loadSessionResult, clearSessionResult } from "@/lib/session-result-cache";
 import PrimaryPersonModal from "@/components/PrimaryPersonModal";
 import type { BirthInfo, KlineData, YearAnalysis, OverallAnalysis, BaziResult, KlineViewMode } from "@/lib/types";
@@ -265,10 +265,10 @@ export default function LifeklinePage() {
     incrementUsage("lifekline");
     addHistory({
       type: "lifekline",
-      title: `${birthInfo.name || birthInfo.year + "年"}生辰K线`,
+      title: `${getPersonDisplayName(birthInfo, birthInfo.year + "年")}生辰K线`,
       data: { birthInfo, kline: pending.fullKline, overall: pending.overall, bazi: baziResult },
     });
-    const personName = birthInfo.name || `命理者${birthInfo.year}`;
+    const personName = getPersonDisplayName(birthInfo, `命理者${birthInfo.year}`);
     saveRecord({
       type: "lifekline",
       personKey: buildPersonKey(personName, birthInfo),
