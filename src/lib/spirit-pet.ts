@@ -3,6 +3,7 @@ import { hashBirth } from "./fortune-chart";
 import { calculateBazi } from "./bazi";
 import { normalizeBirthInfo } from "./birth-utils";
 import { normalizePetGrowth } from "./spirit-pet-growth";
+import { getSpiritBeastAsset } from "./spirit-beast-assets";
 
 const PETS_KEY = "ai-fortune-spirit-pets";
 const SWAPS_KEY = "ai-fortune-pet-swaps";
@@ -446,7 +447,7 @@ function normalizeStoredPet(stored: SpiritPetProfile, personKey: string, info: B
     claimed: stored.claimed ?? true,
   };
 
-  if (!merged.avatarDataUrl) {
+  if (!merged.avatarDataUrl || merged.avatarDataUrl.startsWith("data:image/")) {
     merged.avatarDataUrl = generateSpiritPetAvatar(merged);
   }
 
@@ -603,6 +604,11 @@ export function generateSpiritPetAdvice(
 }
 
 export function generateSpiritPetAvatar(pet: SpiritPetProfile): string {
+  const asset = getSpiritBeastAsset(pet.breedId);
+  if (asset?.avatar) {
+    return asset.avatar;
+  }
+
   if (typeof document === "undefined") return "";
   try {
     const canvas = document.createElement("canvas");

@@ -338,7 +338,7 @@ export async function generateLifeKlineWithAI(
   const period = await completeJson<LifeKlineAiResult>(
     config,
     "你是一名命理数据分析师。请严格输出 json（json_object），不要输出额外文本。",
-    `请根据下列用户信息，生成“人生K线”的结构化数据。\n用户信息：${birthText}${baziNote}\n当前年份：${currentYear}，当前年龄约：${currentAge}。\n要求：\n1) 生成未来 ${requestYears} 年的年K线（从当前年份开始）。\n2) kline 为数组，每项包含 year, age, open, close, high, low，可选 ganZhi。\n3) 所有数值范围 1-100，且满足 high >= max(open, close), low <= min(open, close)。\n4) 生成 summary（100-220字）和 dimensions（11个维度，key/label/score/text）。\n5) dimensions 的 key 使用：overall,career,wealth,marriage,noble,health,safety,family,love,personality,fengshui。\n6) 输出紧凑 json，不要换行注释，不要多余字段。\n返回格式示例：{\"summary\":\"...\",\"kline\":[{\"year\":2026,\"age\":28,\"open\":62,\"close\":68,\"high\":72,\"low\":58}],\"dimensions\":[{\"key\":\"overall\",\"label\":\"整体命势\",\"score\":72,\"text\":\"...\"}]}`,
+    `请根据下列用户信息，生成“人生K线”的结构化数据。\n用户信息：${birthText}${baziNote}\n当前年份：${currentYear}，当前年龄约：${currentAge}。\n要求：\n1) 生成未来 ${requestYears} 年的年K线（从当前年份开始，必须连续、升序、不得缺年）。\n2) kline 为数组，每项包含 year, age, open, close, high, low，可选 ganZhi。\n3) 必须满足 age = year - 出生年。\n4) 所有数值范围 1-100，且满足 high >= max(open, close), low <= min(open, close)。\n5) K线风格需接近股票市场：存在上升段、回撤段、震荡段，不允许长期单边；任意连续同向K线不超过 4 根。\n6) 邻近年份变化要平滑，避免不合理断崖跳变（通常 |close-open| <= 15，且相邻 close 差值通常 <= 18）。\n7) 生成 summary（100-220字）和 dimensions（11个维度，key/label/score/text）。\n8) dimensions 的 key 使用：overall,career,wealth,marriage,noble,health,safety,family,love,personality,fengshui。\n9) 输出紧凑 json，不要换行注释，不要多余字段。\n返回格式示例：{\"summary\":\"...\",\"kline\":[{\"year\":2026,\"age\":28,\"open\":62,\"close\":68,\"high\":72,\"low\":58}],\"dimensions\":[{\"key\":\"overall\",\"label\":\"整体命势\",\"score\":72,\"text\":\"...\"}]}`,
     { maxTokens: 4200, temperature: 0.4 },
   );
 
@@ -347,30 +347,150 @@ export async function generateLifeKlineWithAI(
     full = await completeJson<LifeKlineAiResult>(
       config,
       "你是一名命理数据分析师。请严格输出 json（json_object），不要输出额外文本。",
-      `请根据下列用户信息，生成“人生K线 0-100岁”的结构化数据。\n用户信息：${birthText}${baziNote}\n要求：\n1) kline 按年龄从 0 到 100（共 101 项），year=出生年+age。\n2) 每项包含 year, age, open, close, high, low，可选 ganZhi。\n3) 所有数值范围 1-100，且满足 high >= max(open, close), low <= min(open, close)。\n4) 生成 summary（100-220字）和 dimensions（11个维度，key/label/score/text）。\n5) dimensions 的 key 使用：overall,career,wealth,marriage,noble,health,safety,family,love,personality,fengshui。\n6) 输出紧凑 json，不要换行注释，不要多余字段。\n返回格式示例：{\"summary\":\"...\",\"kline\":[{\"year\":1998,\"age\":0,\"open\":50,\"close\":52,\"high\":55,\"low\":46}],\"dimensions\":[{\"key\":\"overall\",\"label\":\"整体命势\",\"score\":72,\"text\":\"...\"}]}`,
+      `请根据下列用户信息，生成“人生K线 0-100岁”的结构化数据。\n用户信息：${birthText}${baziNote}\n要求：\n1) kline 必须按年龄从 0 到 100（共 101 项，连续、升序、不得缺失），且 year=出生年+age。\n2) 每项包含 year, age, open, close, high, low，可选 ganZhi。\n3) 所有数值范围 1-100，且满足 high >= max(open, close), low <= min(open, close)。\n4) K线风格需接近股票市场：不同人生阶段有趋势切换与波动，不允许 10 年以上明显单边；任意连续同向K线不超过 4 根。\n5) 邻近年龄变化要平滑，避免不合理断崖跳变（通常 |close-open| <= 15，且相邻 close 差值通常 <= 18）。\n6) 生成 summary（100-220字）和 dimensions（11个维度，key/label/score/text）。\n7) dimensions 的 key 使用：overall,career,wealth,marriage,noble,health,safety,family,love,personality,fengshui。\n8) 输出紧凑 json，不要换行注释，不要多余字段。\n返回格式示例：{\"summary\":\"...\",\"kline\":[{\"year\":1998,\"age\":0,\"open\":50,\"close\":52,\"high\":55,\"low\":46}],\"dimensions\":[{\"key\":\"overall\",\"label\":\"整体命势\",\"score\":72,\"text\":\"...\"}]}`,
       { maxTokens: 7800, temperature: 0.35 },
     );
   }
 
-  const normalizeKline = (rows: LifeKlineAiResult["kline"]): KlineData[] => {
-    return (rows ?? []).map((row, index) => {
-      const open = clamp(1, 100, Number(row.open ?? 50));
-      const close = clamp(1, 100, Number(row.close ?? open));
-      const high = clamp(Math.max(open, close), 100, Number(row.high ?? Math.max(open, close)));
-      const low = clamp(1, Math.min(open, close), Number(row.low ?? Math.min(open, close)));
-      return {
-        year: Number(row.year),
-        age: Number(row.age),
+  function applyMarketWave(rows: KlineData[], mode: "period" | "full"): KlineData[] {
+    if (rows.length <= 1) return rows;
+
+    const phaseLen = mode === "full" ? 12 : 6;
+    const waveAmp = mode === "full" ? 5.5 : 4.5;
+    const maxRun = mode === "full" ? 4 : 3;
+
+    let runDir: "up" | "down" | null = null;
+    let runLen = 0;
+    let prevClose = rows[0]!.close;
+
+    return rows.map((row, index) => {
+      let open = index === 0 ? row.open : prevClose;
+
+      // 注入温和波动：保留 AI 趋势，同时增加“趋势-回撤-震荡”节奏。
+      const wave = Math.sin((index / phaseLen) * Math.PI * 2) * waveAmp;
+      const desired = clamp(1, 100, row.close * 0.78 + (open + wave) * 0.22);
+      let close = clamp(open - 15, open + 15, desired);
+
+      // 限制连续同向 K 线过长，避免“连续吉/凶”失真。
+      let dir: "up" | "down" = close >= open ? "up" : "down";
+      if (runDir === dir) {
+        runLen += 1;
+      } else {
+        runDir = dir;
+        runLen = 1;
+      }
+      if (runLen > maxRun) {
+        const push = Math.min(4, runLen - maxRun + 1);
+        close = dir === "up" ? open - push : open + push;
+        dir = close >= open ? "up" : "down";
+        runDir = dir;
+        runLen = 1;
+      }
+
+      // 保留原蜡烛“上下影线风格”，并满足 K 线约束。
+      const upWick = Math.max(1, row.high - Math.max(row.open, row.close));
+      const downWick = Math.max(1, Math.min(row.open, row.close) - row.low);
+      const bodyTop = Math.max(open, close);
+      const bodyBottom = Math.min(open, close);
+      const high = clamp(bodyTop, 100, bodyTop + upWick);
+      const low = clamp(1, bodyBottom, bodyBottom - downWick);
+
+      const shaped: KlineData = {
+        ...row,
         open: Math.round(open * 10) / 10,
         close: Math.round(close * 10) / 10,
         high: Math.round(high * 10) / 10,
         low: Math.round(low * 10) / 10,
         score: Math.round(close),
         trend: normalizeTrend(open, close),
-        ganZhi: row.ganZhi,
-        isCurrent: index === 0,
       };
-    }).filter((row) => Number.isFinite(row.year) && Number.isFinite(row.age));
+      prevClose = shaped.close;
+      return shaped;
+    });
+  }
+
+  function sanitizeCandle(
+    raw: LifeKlineAiResult["kline"][number] | undefined,
+    year: number,
+    age: number,
+    prevClose: number,
+  ): KlineData {
+    const fallbackOpen = clamp(1, 100, prevClose);
+    const rawOpen = Number(raw?.open);
+    const open = clamp(1, 100, Number.isFinite(rawOpen) ? rawOpen : fallbackOpen);
+
+    const rawClose = Number(raw?.close);
+    const close = clamp(1, 100, Number.isFinite(rawClose) ? rawClose : open);
+
+    const minBody = Math.min(open, close);
+    const maxBody = Math.max(open, close);
+    const rawHigh = Number(raw?.high);
+    const rawLow = Number(raw?.low);
+    const high = clamp(maxBody, 100, Number.isFinite(rawHigh) ? rawHigh : maxBody);
+    const low = clamp(1, minBody, Number.isFinite(rawLow) ? rawLow : minBody);
+
+    return {
+      year,
+      age,
+      open: Math.round(open * 10) / 10,
+      close: Math.round(close * 10) / 10,
+      high: Math.round(high * 10) / 10,
+      low: Math.round(low * 10) / 10,
+      score: Math.round(close),
+      trend: normalizeTrend(open, close),
+      ganZhi: raw?.ganZhi,
+      isCurrent: year === currentYear,
+    };
+  }
+
+  const normalizePeriodKline = (rows: LifeKlineAiResult["kline"]): KlineData[] => {
+    const byYear = new Map<number, LifeKlineAiResult["kline"][number]>();
+    for (const row of rows ?? []) {
+      const y = Number(row?.year);
+      if (!Number.isFinite(y)) continue;
+      if (!byYear.has(y)) byYear.set(y, row);
+    }
+
+    const list: KlineData[] = [];
+    let prevClose = 50;
+    for (let i = 0; i < requestYears; i++) {
+      const year = currentYear + i;
+      const age = year - params.birthInfo.year;
+      const bar = sanitizeCandle(byYear.get(year), year, age, prevClose);
+      list.push(bar);
+      prevClose = bar.close;
+    }
+    return list.map((row, idx) => ({ ...row, isCurrent: idx === 0 }));
+  };
+
+  const normalizeFullKline = (rows: LifeKlineAiResult["kline"]): KlineData[] => {
+    const byAge = new Map<number, LifeKlineAiResult["kline"][number]>();
+    for (const row of rows ?? []) {
+      const age = Number(row?.age);
+      if (!Number.isFinite(age)) continue;
+      if (age < 0 || age > 100) continue;
+      if (!byAge.has(age)) byAge.set(age, row);
+    }
+
+    const list: KlineData[] = [];
+    let prevClose = 50;
+    for (let age = 0; age <= 100; age++) {
+      const year = params.birthInfo.year + age;
+      const bar = sanitizeCandle(byAge.get(age), year, age, prevClose);
+      list.push(bar);
+      prevClose = bar.close;
+    }
+
+    if (!list.some((row) => row.isCurrent)) {
+      const nearest = list.reduce((best, row, idx, arr) => {
+        const bestDiff = Math.abs(arr[best]!.year - currentYear);
+        const curDiff = Math.abs(row.year - currentYear);
+        return curDiff < bestDiff ? idx : best;
+      }, 0);
+      return list.map((row, idx) => ({ ...row, isCurrent: idx === nearest }));
+    }
+
+    return list;
   };
 
   const normalizeDimensions = (dims: LifeKlineAiResult["dimensions"]): OverallAnalysis["dimensions"] => {
@@ -382,8 +502,10 @@ export async function generateLifeKlineWithAI(
     }));
   };
 
-  const periodKline = normalizeKline(period.kline);
-  const fullKline = full ? normalizeKline(full.kline) : periodKline;
+  const periodKline = applyMarketWave(normalizePeriodKline(period.kline), "period");
+  const fullKline = full
+    ? applyMarketWave(normalizeFullKline(full.kline), "full")
+    : periodKline;
   const overall: OverallAnalysis = {
     summary: String((full?.summary || period.summary || "").trim()),
     dimensions: normalizeDimensions(full?.dimensions ?? period.dimensions),
@@ -423,13 +545,26 @@ export async function generateMonthlyKlineWithAI(
     { maxTokens: 2200, temperature: 0.35 },
   );
 
-  const rows = (result.kline ?? []).map((row) => {
-    const open = clamp(1, 100, Number(row.open ?? 50));
-    const close = clamp(1, 100, Number(row.close ?? open));
-    const high = clamp(Math.max(open, close), 100, Number(row.high ?? Math.max(open, close)));
-    const low = clamp(1, Math.min(open, close), Number(row.low ?? Math.min(open, close)));
-    const month = clamp(1, 12, Number(row.month ?? 1));
-    return {
+  const byMonth = new Map<number, MonthlyKlineAiResult["kline"][number]>();
+  for (const row of result.kline ?? []) {
+    const m = Number(row?.month);
+    if (!Number.isFinite(m)) continue;
+    const month = clamp(1, 12, m);
+    if (!byMonth.has(month)) byMonth.set(month, row);
+  }
+
+  const now = new Date();
+  const isCurrentYear = params.year === now.getFullYear();
+  const rows: KlineData[] = [];
+  let prevClose = 50;
+
+  for (let month = 1; month <= 12; month++) {
+    const raw = byMonth.get(month);
+    const open = clamp(1, 100, Number.isFinite(Number(raw?.open)) ? Number(raw?.open) : prevClose);
+    const close = clamp(1, 100, Number.isFinite(Number(raw?.close)) ? Number(raw?.close) : open);
+    const high = clamp(Math.max(open, close), 100, Number.isFinite(Number(raw?.high)) ? Number(raw?.high) : Math.max(open, close));
+    const low = clamp(1, Math.min(open, close), Number.isFinite(Number(raw?.low)) ? Number(raw?.low) : Math.min(open, close));
+    rows.push({
       month,
       year: params.year,
       age,
@@ -441,13 +576,10 @@ export async function generateMonthlyKlineWithAI(
       trend: normalizeTrend(open, close),
       isMonthly: true,
       isBirth: false,
-      isCurrent: false,
+      isCurrent: isCurrentYear && month === now.getMonth() + 1,
       xLabel: `${month}月`,
-    } as KlineData;
-  }).sort((a, b) => a.month! - b.month!);
-
-  if (rows.length !== 12) {
-    throw new Error("AI 返回的月K线数据不完整");
+    });
+    prevClose = close;
   }
 
   return rows;

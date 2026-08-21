@@ -102,8 +102,9 @@ export default function LifeklinePage() {
   const mainData = useMemo(() => {
     if (!hasResult) return [];
     if (drillYear) return monthlyKline;
+    if (lifeYears >= 100) return fullKline;
     return periodKline;
-  }, [hasResult, drillYear, periodKline, monthlyKline]);
+  }, [hasResult, drillYear, lifeYears, fullKline, periodKline, monthlyKline]);
 
   const mainViewMode: KlineViewMode = useMemo(() => {
     if (drillYear || lifeYears === 1) return "month";
