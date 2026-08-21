@@ -326,10 +326,10 @@ export default function LifeklinePage() {
             <p className="app-label">推演年数</p>
             <div className="flex flex-wrap gap-1.5">
               {LIFE_YEAR_OPTIONS.map(({ label, value }) => (
-                <button key={value} onClick={() => setLifeYears(value)} disabled={phase === "generating"}
+                <button key={value} onClick={() => setLifeYears(value)}
                   className={`rounded-lg px-3 py-1 text-xs ${
                     lifeYears === value ? "bg-app-accent text-white" : "border border-app-border text-app-muted"
-                  } disabled:opacity-40`}>{label}</button>
+                  }`}>{label}</button>
               ))}
             </div>
           </div>
