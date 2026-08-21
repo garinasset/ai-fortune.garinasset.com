@@ -1,0 +1,150 @@
+"use client";
+
+import { useState, useCallback, useEffect } from "react";
+import BirthForm from "@/components/BirthForm";
+import GenerationOverlay from "@/components/GenerationOverlay";
+import AnalysisPanel from "@/components/AnalysisPanel";
+import PaywallModal from "@/components/PaywallModal";
+import PrimaryPersonModal from "@/components/PrimaryPersonModal";
+import BoostFortuneButton from "@/components/BoostFortuneButton";
+import { canUse, incrementUsage, getRemaining } from "@/lib/user-store";
+import { saveRecord, buildPersonKey, buildPersonLabel } from "@/lib/record-store";
+import { saveBirthInfo } from "@/lib/birth-store";
+import { ensurePrimaryPersonBeforeCalc } from "@/lib/person-store";
+import { saveSessionResult, loadSessionResult, clearSessionResult } from "@/lib/session-result-cache";
+import type { BirthInfo, BaziResult, AnalysisResult } from "@/lib/types";
+
+interface BaziSessionState {
+  birthInfo: BirthInfo;
+  bazi: BaziResult;
+  analysis: AnalysisResult;
+}
+
+export default function BaziHubPanel() {
+  const [phase, setPhase] = useState<"form" | "generating" | "result">("form");
+  const [birthInfo, setBirthInfo] = useState<BirthInfo | null>(null);
+  const [bazi, setBazi] = useState<BaziResult | null>(null);
+  const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [paywall, setPaywall] = useState(false);
+  const [primaryModal, setPrimaryModal] = useState(false);
+  const remaining = getRemaining("lifekline");
+
+  useEffect(() => {
+    const cached = loadSessionResult<BaziSessionState>("bazi");
+    if (cached?.birthInfo && cached.bazi && cached.analysis) {
+      setBirthInfo(cached.birthInfo);
+      setBazi(cached.bazi);
+      setAnalysis(cached.analysis);
+      setPhase("result");
+    }
+  }, []);
+
+  const handleSubmit = (info: BirthInfo) => {
+    if (!ensurePrimaryPersonBeforeCalc()) {
+      setPrimaryModal(true);
+      return;
+    }
+    if (!canUse("lifekline")) {
+      setPaywall(true);
+      return;
+    }
+    setError(null);
+    setBirthInfo(info);
+    setPhase("generating");
+  };
+
+  const onGenerateComplete = useCallback(() => {
+    if (!birthInfo) return;
+    (async () => {
+      try {
+        const res = await fetch("/api/analyze/bazi", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ birthInfo }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error ?? "八字分析失败");
+        if (!data?.bazi || !data?.analysis) throw new Error("八字返回数据不完整");
+
+        const baziResult = data.bazi as BaziResult;
+        const aiAnalysis = data.analysis as AnalysisResult;
+        setBazi(baziResult);
+        setAnalysis(aiAnalysis);
+        incrementUsage("lifekline");
+        saveBirthInfo(birthInfo);
+        const personName = birthInfo.name || `命理者${birthInfo.year}`;
+        saveRecord({
+          type: "bazi",
+          personKey: buildPersonKey(personName, birthInfo),
+          personName,
+          personLabel: buildPersonLabel(personName, birthInfo),
+          title: "八字排盘",
+          summary: aiAnalysis.summary,
+          data: { birthInfo, bazi: baziResult, analysis: aiAnalysis },
+        });
+        saveSessionResult("bazi", { birthInfo, bazi: baziResult, analysis: aiAnalysis });
+        setPhase("result");
+      } catch (err) {
+        console.error("bazi generate failed", err);
+        setError(err instanceof Error ? err.message : "八字分析失败，请稍后重试");
+        setPhase("form");
+      }
+    })();
+  }, [birthInfo]);
+
+  if (phase === "generating") {
+    return (
+      <div className="relative min-h-[320px]">
+        <GenerationOverlay
+          embedded
+          onComplete={onGenerateComplete}
+          duration={5000}
+          title="正在排盘"
+          icon="☯"
+        />
+      </div>
+    );
+  }
+
+  if (phase === "result" && bazi && birthInfo && analysis) {
+    return (
+      <div className="page-section">
+        <p className="caption mb-3 text-app-muted">
+          四柱八字 · 命格解读 · 剩余免费 {remaining} 次
+        </p>
+        <AnalysisPanel result={analysis} bazi={bazi} />
+        <div className="mt-4 space-y-2">
+          <BoostFortuneButton />
+          <button
+            type="button"
+            onClick={() => {
+              clearSessionResult("bazi");
+              setPhase("form");
+              setBazi(null);
+              setAnalysis(null);
+              setBirthInfo(null);
+            }}
+            className="app-btn-outline w-full"
+          >
+            重新排盘
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <p className="caption mb-3 text-app-muted">
+        四柱八字 · 独立排盘测算 · 剩余免费 {remaining} 次
+      </p>
+      <div className="app-card mb-4">
+        <BirthForm onSubmit={handleSubmit} submitLabel="生成八字排盘" />
+      </div>
+      {error && <p className="mb-3 text-xs text-red-400">{error}</p>}
+      <PaywallModal open={paywall} onClose={() => setPaywall(false)} feature="八字排盘" />
+      <PrimaryPersonModal open={primaryModal} onClose={() => setPrimaryModal(false)} />
+    </>
+  );
+}
