@@ -296,6 +296,59 @@ function extractJsonLike(content: string): string {
   return trimmed;
 }
 
+/** 修复 AI 常见 JSON 瑕疵：尾逗号、截断未闭合括号等 */
+function repairJsonLike(jsonLike: string): string {
+  let s = jsonLike.trim();
+  s = s.replace(/,\s*([\]}])/g, "$1");
+
+  let braces = 0;
+  let brackets = 0;
+  let inStr = false;
+  let esc = false;
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i]!;
+    if (inStr) {
+      if (esc) esc = false;
+      else if (c === "\\") esc = true;
+      else if (c === '"') inStr = false;
+      continue;
+    }
+    if (c === '"') inStr = true;
+    else if (c === "{") braces++;
+    else if (c === "}") braces--;
+    else if (c === "[") brackets++;
+    else if (c === "]") brackets--;
+  }
+  if (braces > 0 || brackets > 0) {
+    s = s.replace(/,\s*"[^"\\]*(?:\\.[^"\\]*)*"?\s*:?\s*"?[^"\\]*(?:\\.[^"\\]*)*"?\s*$/, "");
+    s = s.replace(/,\s*\{[^}]*$/, "");
+    s = s.replace(/,\s*$/, "");
+  }
+  while (brackets > 0) {
+    s += "]";
+    brackets--;
+  }
+  while (braces > 0) {
+    s += "}";
+    braces--;
+  }
+  return s;
+}
+
+function parseAiJson<T>(content: string): T {
+  const raw = extractJsonLike(content);
+  const candidates = [raw, repairJsonLike(raw)];
+  let lastErr: unknown;
+  for (const jsonLike of candidates) {
+    try {
+      return JSON.parse(jsonLike) as T;
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+  throw lastErr;
+}
+
 function buildJsonParseDebug(
   parseError: unknown,
   provider: string,
@@ -350,6 +403,50 @@ export async function generateLifeKlineWithAI(
     return { periodKline, fullKline, overall };
   }
 
+  try {
+    return await generateLifeKlineFromLLM(config, params, {
+      currentYear,
+      currentAge,
+      requestYears,
+      includeWholeLife,
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    const shouldFallback =
+      isAIJsonParseError(err) ||
+      message.includes("AI 接口") ||
+      message.includes("JSON") ||
+      message.includes("不完整") ||
+      message.includes("未返回");
+    if (!shouldFallback) throw err;
+    console.error("[generateLifeKlineWithAI] AI failed, using local fallback:", err);
+    const periodKline = annotateKlineExtremes(
+      generateForwardYearsKline(params.birthInfo, requestYears),
+    );
+    const fullKline = annotateKlineExtremes(
+      includeWholeLife ? generateFullLifeKline(params.birthInfo) : periodKline,
+    );
+    const overall = generateOverallAnalysis(fullKline, params.birthInfo);
+    return { periodKline, fullKline, overall };
+  }
+}
+
+async function generateLifeKlineFromLLM(
+  config: LLMConfig | undefined,
+  params: {
+    birthInfo: BirthInfo;
+    years: number;
+    includeWholeLife?: boolean;
+    baziText?: string;
+  },
+  ctx: {
+    currentYear: number;
+    currentAge: number;
+    requestYears: number;
+    includeWholeLife: boolean;
+  },
+): Promise<{ periodKline: KlineData[]; fullKline: KlineData[]; overall: OverallAnalysis }> {
+  const { currentYear, currentAge, requestYears, includeWholeLife } = ctx;
   const birthText = formatBirthInfoForPrompt(params.birthInfo);
   const baziNote = params.baziText ? `\n八字参考：${params.baziText}` : "";
 
@@ -359,7 +456,7 @@ export async function generateLifeKlineWithAI(
     llmConfig,
     "你是一名命理数据分析师。请严格输出 json（json_object），不要输出额外文本。",
     `请根据下列用户信息，生成“人生K线”的结构化数据。\n用户信息：${birthText}${baziNote}\n当前年份：${currentYear}，当前年龄约：${currentAge}。\n要求：\n1) 生成未来 ${requestYears} 年的年K线（从当前年份开始，必须连续、升序、不得缺年）。\n2) kline 为数组，每项包含 year, age, open, close, high, low，可选 ganZhi。\n3) 必须满足 age = year - 出生年。\n4) 所有数值范围 1-100，且满足 high >= max(open, close), low <= min(open, close)。\n5) K线风格需接近股票市场：存在上升段、回撤段、震荡段，不允许长期单边；任意连续同向K线不超过 4 根。\n6) 邻近年份变化要平滑，避免不合理断崖跳变（通常 |close-open| <= 15，且相邻 close 差值通常 <= 18）。\n7) 生成 summary（100-220字）和 dimensions（11个维度，key/label/score/text）。\n8) dimensions 的 key 使用：overall,career,wealth,marriage,noble,health,safety,family,love,personality,fengshui。\n9) 输出紧凑 json，不要换行注释，不要多余字段。\n返回格式示例：{\"summary\":\"...\",\"kline\":[{\"year\":2026,\"age\":28,\"open\":62,\"close\":68,\"high\":72,\"low\":58}],\"dimensions\":[{\"key\":\"overall\",\"label\":\"整体命势\",\"score\":72,\"text\":\"...\"}]}`,
-    { maxTokens: 4200, temperature: 0.4 },
+    { maxTokens: 8000, temperature: 0.4 },
   );
 
   let full: LifeKlineAiResult | null = null;
@@ -367,8 +464,8 @@ export async function generateLifeKlineWithAI(
     full = await completeJson<LifeKlineAiResult>(
       llmConfig,
       "你是一名命理数据分析师。请严格输出 json（json_object），不要输出额外文本。",
-      `请根据下列用户信息，生成“人生K线 0-100岁”的结构化数据。\n用户信息：${birthText}${baziNote}\n要求：\n1) kline 必须按年龄从 0 到 100（共 101 项，连续、升序、不得缺失），且 year=出生年+age。\n2) 每项包含 year, age, open, close, high, low，可选 ganZhi。\n3) 所有数值范围 1-100，且满足 high >= max(open, close), low <= min(open, close)。\n4) K线风格需接近股票市场：不同人生阶段有趋势切换与波动，不允许 10 年以上明显单边；任意连续同向K线不超过 4 根。\n5) 邻近年龄变化要平滑，避免不合理断崖跳变（通常 |close-open| <= 15，且相邻 close 差值通常 <= 18）。\n6) 生成 summary（100-220字）和 dimensions（11个维度，key/label/score/text）。\n7) dimensions 的 key 使用：overall,career,wealth,marriage,noble,health,safety,family,love,personality,fengshui。\n8) 输出紧凑 json，不要换行注释，不要多余字段。\n返回格式示例：{\"summary\":\"...\",\"kline\":[{\"year\":1998,\"age\":0,\"open\":50,\"close\":52,\"high\":55,\"low\":46}],\"dimensions\":[{\"key\":\"overall\",\"label\":\"整体命势\",\"score\":72,\"text\":\"...\"}]}`,
-      { maxTokens: 7800, temperature: 0.35 },
+      `请根据下列用户信息，生成“人生K线 0-100岁”的结构化数据。\n用户信息：${birthText}${baziNote}\n要求：\n1) kline 必须按年龄从 0 到 100（共 101 项，连续、升序、不得缺失），且 year=出生年+age。\n2) 每项仅包含 year, age, open, close, high, low（不要 ganZhi，不要多余字段）。\n3) 所有数值范围 1-100，且满足 high >= max(open, close), low <= min(open, close)。\n4) K线风格需接近股票市场：不同人生阶段有趋势切换与波动，不允许 10 年以上明显单边；任意连续同向K线不超过 4 根。\n5) 邻近年龄变化要平滑，避免不合理断崖跳变（通常 |close-open| <= 15，且相邻 close 差值通常 <= 18）。\n6) 生成 summary（100-220字）和 dimensions（11个维度，key/label/score/text）。\n7) dimensions 的 key 使用：overall,career,wealth,marriage,noble,health,safety,family,love,personality,fengshui。\n8) 输出紧凑 json，不要换行注释，不要多余字段。\n返回格式示例：{\"summary\":\"...\",\"kline\":[{\"year\":1998,\"age\":0,\"open\":50,\"close\":52,\"high\":55,\"low\":46}],\"dimensions\":[{\"key\":\"overall\",\"label\":\"整体命势\",\"score\":72,\"text\":\"...\"}]}`,
+      { maxTokens: 16384, temperature: 0.35 },
     );
   }
 
@@ -559,6 +656,29 @@ export async function generateMonthlyKlineWithAI(
     return generateMonthlyKline(params.birthInfo, params.year);
   }
 
+  try {
+    return await generateMonthlyKlineFromLLM(config, params);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    const shouldFallback =
+      isAIJsonParseError(err) ||
+      message.includes("AI 接口") ||
+      message.includes("JSON") ||
+      message.includes("未返回");
+    if (!shouldFallback) throw err;
+    console.error("[generateMonthlyKlineWithAI] AI failed, using local fallback:", err);
+    return generateMonthlyKline(params.birthInfo, params.year);
+  }
+}
+
+async function generateMonthlyKlineFromLLM(
+  config: LLMConfig | undefined,
+  params: {
+    birthInfo: BirthInfo;
+    year: number;
+    baziText?: string;
+  },
+): Promise<KlineData[]> {
   const birthText = formatBirthInfoForPrompt(params.birthInfo);
   const baziNote = params.baziText ? `\n八字参考：${params.baziText}` : "";
   const age = params.year - params.birthInfo.year;
@@ -729,20 +849,32 @@ async function completeJson<T>(
   }
   if (!content) throw new Error("AI 未返回有效内容");
 
-  const jsonLike = extractJsonLike(content);
-  try {
-    return JSON.parse(jsonLike) as T;
-  } catch (err) {
-    const debug = buildJsonParseDebug(
-      err,
-      String(config.provider),
-      String(model),
-      content,
-      jsonLike,
-    );
-    console.error("[AI JSON Parse Error]", debug);
-    throw new AIJsonParseError("AI 返回 JSON 解析失败", debug);
+  let lastErr: unknown;
+  let lastJsonLike = "";
+  let lastRaw = content;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    if (attempt > 0) {
+      content = await callApi();
+      if (!content) break;
+      lastRaw = content;
+    }
+    lastJsonLike = extractJsonLike(content);
+    try {
+      return parseAiJson<T>(content);
+    } catch (err) {
+      lastErr = err;
+    }
   }
+
+  const debug = buildJsonParseDebug(
+    lastErr,
+    String(config.provider),
+    String(model),
+    lastRaw,
+    lastJsonLike,
+  );
+  console.error("[AI JSON Parse Error]", debug);
+  throw new AIJsonParseError("AI 返回 JSON 解析失败", debug);
 }
 
 async function analyzeImageWithVision(

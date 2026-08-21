@@ -2,7 +2,7 @@
 
 import { useState, useRef, useMemo, useEffect } from "react";
 import {
-  ComposedChart, LineChart, Line, XAxis, YAxis, Tooltip,
+  ComposedChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip,
   ResponsiveContainer, CartesianGrid, ReferenceLine, Customized,
 } from "recharts";
 import { Maximize2, Minimize2, BarChart2, TrendingUp, X, ChevronLeft } from "lucide-react";
@@ -93,6 +93,16 @@ function buildScoreAxisTicks(lo: number, hi: number): number[] {
 type AxisScale = { scale: { (v: string): number; bandwidth?: () => number } };
 type ValueScale = { scale: (v: number) => number };
 
+/** 按可用 band 宽度计算柱宽：移动端 band 窄时保证最小可见宽度 */
+function resolveBarWidth(bandW: number, count: number, maxCap: number): number {
+  if (!Number.isFinite(bandW) || bandW <= 0) {
+    return count > 50 ? 4 : 6;
+  }
+  const ratio = count > 50 ? 0.72 : 0.82;
+  const floor = count > 50 ? 3 : 4;
+  return Math.max(floor, Math.min(bandW * ratio, maxCap));
+}
+
 function KlineCandles({
   xAxisMap,
   yAxisMap,
@@ -120,8 +130,7 @@ function KlineCandles({
   const yAxis = yAxisMap ? Object.values(yAxisMap)[0] : undefined;
   if (!xAxis?.scale || !yAxis?.scale) return null;
 
-  const bandW = xAxis.scale.bandwidth?.() ?? 8;
-  const barW = Math.min(bandW, maxBarSize);
+  const bandW = xAxis.scale.bandwidth?.() ?? 0;
 
   const strokeFor = (entry: ChartRow, i: number) => {
     if (entry.isBirth) return "#d4a574";
@@ -142,7 +151,10 @@ function KlineCandles({
   return (
     <g className="kline-candles">
       {data.map((entry, i) => {
-        const cx = (xAxis.scale(entry.xLabel) ?? 0) + bandW / 2;
+        const slotW = bandW > 0 ? bandW : maxBarSize;
+        const barW = resolveBarWidth(bandW, data.length, maxBarSize);
+        const slotX = xAxis.scale(entry.xLabel);
+        const cx = (slotX ?? 0) + slotW / 2;
         const x0 = cx - barW / 2;
         const yTop = yAxis.scale(entry.bodyBase + entry.bodyHeight);
         const yBottom = yAxis.scale(entry.bodyBase);
@@ -271,7 +283,7 @@ export default function LifeklineChart({
     [yAxisTicks, yMin],
   );
 
-  const maxBarSize = isLifeFull ? 2 : viewMode === "life" ? 4 : 12;
+  const maxBarSize = isLifeFull ? 8 : viewMode === "life" ? 10 : 14;
 
   useEffect(() => {
     setMounted(true);
@@ -422,6 +434,14 @@ export default function LifeklineChart({
                 );
               }} />
               <ReferenceLine y={ySpan / 2} stroke="var(--color-border)" strokeDasharray="4 4" />
+              <Bar
+                dataKey="bodyHeight"
+                maxBarSize={maxBarSize}
+                fill="transparent"
+                stroke="transparent"
+                isAnimationActive={false}
+                shape={() => <g />}
+              />
               <Customized
                 component={(props: { xAxisMap?: Record<string, AxisScale>; yAxisMap?: Record<string, ValueScale> }) => (
                   <>
