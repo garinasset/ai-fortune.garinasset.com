@@ -17,6 +17,7 @@ export function normalizeBirthInfo(info: Partial<BirthInfo> & Pick<BirthInfo, "y
     gender: info.gender === "female" ? "female" : "male",
     name: info.name,
     calendar: info.calendar === "lunar" ? "lunar" : "solar",
+    birthPlace: info.birthPlace?.trim() || undefined,
   };
 }
 

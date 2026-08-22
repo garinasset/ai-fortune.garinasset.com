@@ -154,7 +154,7 @@ export default function BaziHubPanel() {
       <p className="caption mb-3 text-app-muted">
         四柱八字 · 独立排盘测算 · 剩余免费 {remaining} 次
       </p>
-      <div className="app-card mb-4">
+      <div className="app-card !p-3 mb-3">
         <BirthForm onSubmit={handleSubmit} submitLabel="生成八字排盘" />
       </div>
       {error && <p className="mb-3 text-xs text-red-400">{error}</p>}

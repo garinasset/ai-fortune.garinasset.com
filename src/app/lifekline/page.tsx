@@ -365,12 +365,12 @@ export default function LifeklinePage() {
 
       {showKlineContent && phase === "form" && (
         <>
-          <div className="app-card mb-4">
+          <div className="app-card !p-3 mb-3">
             <BirthForm onSubmit={handleSubmit} />
           </div>
           {error && <p className="mb-3 text-xs text-red-400">{error}</p>}
-          <div className="mb-4">
-            <p className="app-label">推演年数</p>
+          <div className="mb-2">
+            <p className="mb-1 text-[11px] font-medium text-app-muted">推演年数</p>
             <div className="flex flex-wrap gap-1.5">
               {LIFE_YEAR_OPTIONS.map(({ label, value }) => (
                 <button key={value} onClick={() => setLifeYears(value)}

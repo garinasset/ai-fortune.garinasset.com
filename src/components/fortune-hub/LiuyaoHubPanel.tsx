@@ -128,8 +128,8 @@ export default function LiuyaoHubPanel() {
 
       {!result ? (
         <>
-          <div className="app-card mb-4">
-            <p className="subsection-title mb-2">测算对象生辰</p>
+          <div className="app-card !p-3 mb-3">
+            <p className="mb-1.5 text-xs font-medium text-app-text">测算对象生辰</p>
             <BirthForm
               onSubmit={() => {}}
               onValuesChange={setBirthDraft}
