@@ -118,7 +118,6 @@ function KlineLayer({
   offset,
   data,
   ySpan,
-  yMin,
   maxBarSize,
   labelFontSize,
   viewMode,
@@ -131,7 +130,6 @@ function KlineLayer({
   offset?: ChartOffset;
   data: ChartRow[];
   ySpan: number;
-  yMin: number;
   maxBarSize: number;
   labelFontSize: number;
   viewMode: KlineViewMode;
@@ -170,8 +168,6 @@ function KlineLayer({
         const yBottom = yAt(entry.bodyBase);
         const bodyH = Math.max(yBottom - yTop, 1);
         const fill = entry.close >= entry.open ? "#e05555" : "#4a9e6a";
-        const wickTop = yAt(entry.high - yMin);
-        const wickBottom = yAt(entry.low - yMin);
         const topLabel = getTopMarkerLabel(entry, viewMode);
 
         return (
@@ -184,7 +180,6 @@ function KlineLayer({
             onTouchStart={() => onHover(i)}
             onTouchEnd={() => onHover(null)}
           >
-            <line x1={cx} y1={wickTop} x2={cx} y2={wickBottom} stroke={fill} strokeWidth={1} />
             <rect
               x={x0}
               y={yTop}
