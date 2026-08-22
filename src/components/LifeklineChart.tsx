@@ -432,7 +432,6 @@ export default function LifeklineChart({
                     offset={props.offset}
                     data={chartData}
                     ySpan={ySpan}
-                    yMin={yMin}
                     maxBarSize={maxBarSize}
                     labelFontSize={labelFontSize}
                     viewMode={viewMode}
