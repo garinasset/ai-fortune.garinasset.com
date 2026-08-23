@@ -6,7 +6,9 @@ import AnalysisPanel from "@/components/AnalysisPanel";
 import XiangScanOverlay from "@/components/XiangScanOverlay";
 import PaywallModal from "@/components/PaywallModal";
 import ReportPosterButton, { SharePosterButton } from "@/components/ReportPosterButton";
-import { canUse, incrementUsage, getRemaining, addHistory } from "@/lib/user-store";
+import { canUse, incrementUsage, addHistory } from "@/lib/user-store";
+import { usePetFoodRemaining } from "@/hooks/usePetFoodRemaining";
+import { formatPetFoodRemaining } from "@/lib/pet-food-remaining";
 import { saveRecord, buildPersonKey, buildPersonLabel } from "@/lib/record-store";
 import { useApp } from "@/context/AppContext";
 import PrimaryPersonModal from "@/components/PrimaryPersonModal";
@@ -40,7 +42,7 @@ export default function XiangPage() {
   const [pendingType, setPendingType] = useState<Tab>("palm");
   const pendingPreview = useRef<string | null>(null);
 
-  const remaining = getRemaining("xiang");
+  const remaining = usePetFoodRemaining();
 
   useEffect(() => {
     const cached = loadSessionResult<{ tab: Tab; preview: string; result: AnalysisResult }>("xiang");
@@ -107,7 +109,7 @@ export default function XiangPage() {
     <>
       <PageHeader
         title="看相"
-        subtitle={`AI 智能 · 手相 & 面相分析 · 剩余免费 ${remaining} 次`}
+        subtitle={`AI 智能 · 手相 & 面相分析 · ${formatPetFoodRemaining(remaining)}`}
       />
 
       <SegmentedControl

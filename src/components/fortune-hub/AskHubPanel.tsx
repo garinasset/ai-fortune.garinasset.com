@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import SpiritPetChatPanel from "@/components/SpiritPetChatPanel";
 import { resolveSpiritPetPageState } from "@/lib/spirit-pet-page-state";
+import { usePetFoodRemaining } from "@/hooks/usePetFoodRemaining";
+import { formatPetFoodRemaining } from "@/lib/pet-food-remaining";
 import type { BirthInfo, SpiritPetProfile } from "@/lib/types";
 import BoostFortuneButton from "@/components/BoostFortuneButton";
 
@@ -10,6 +12,7 @@ export default function AskHubPanel() {
   const [pet, setPet] = useState<SpiritPetProfile | null>(null);
   const [birth, setBirth] = useState<BirthInfo | null>(null);
   const [personName, setPersonName] = useState("主人");
+  const remaining = usePetFoodRemaining();
 
   useEffect(() => {
     const snap = resolveSpiritPetPageState();
@@ -31,6 +34,7 @@ export default function AskHubPanel() {
 
   return (
     <>
+      <p className="caption mb-3 text-app-muted">问 AI 灵宠 · {formatPetFoodRemaining(remaining)}</p>
       <SpiritPetChatPanel
         pet={pet}
         personName={personName}

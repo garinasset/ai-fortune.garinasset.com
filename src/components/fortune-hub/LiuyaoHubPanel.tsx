@@ -7,7 +7,9 @@ import ReportPosterButton, { SharePosterButton } from "@/components/ReportPoster
 import PaywallModal from "@/components/PaywallModal";
 import HexagramLines from "@/components/HexagramLines";
 import { castHexagram, type HexagramResult } from "@/lib/liuyao";
-import { canUse, incrementUsage, getRemaining } from "@/lib/user-store";
+import { canUse, incrementUsage } from "@/lib/user-store";
+import { usePetFoodRemaining } from "@/hooks/usePetFoodRemaining";
+import { formatPetFoodRemaining } from "@/lib/pet-food-remaining";
 import { saveRecord, buildPersonKey, buildPersonLabel } from "@/lib/record-store";
 import PrimaryPersonModal from "@/components/PrimaryPersonModal";
 import BoostFortuneButton from "@/components/BoostFortuneButton";
@@ -15,6 +17,8 @@ import { ensurePrimaryPersonBeforeCalc, getPersonDisplayName } from "@/lib/perso
 import { grantSpiritPowerForTask } from "@/lib/spirit-pet-tasks";
 import { saveSessionResult, loadSessionResult, clearSessionResult } from "@/lib/session-result-cache";
 import { saveBirthInfo } from "@/lib/birth-store";
+import AiDisclaimer from "@/components/AiDisclaimer";
+import { LiuyaoHubDemo } from "@/components/fortune-hub/HubFeatureDemos";
 import type { BirthInfo } from "@/lib/types";
 
 interface LiuyaoSessionState {
@@ -34,7 +38,7 @@ export default function LiuyaoHubPanel() {
   const [paywall, setPaywall] = useState(false);
   const [primaryModal, setPrimaryModal] = useState(false);
   const resultRef = useRef<LiuyaoSessionState | null>(null);
-  const remaining = getRemaining("liuyao");
+  const remaining = usePetFoodRemaining();
 
   useEffect(() => {
     const cached = loadSessionResult<LiuyaoSessionState>("liuyao");
@@ -124,7 +128,7 @@ export default function LiuyaoHubPanel() {
         <GenerationOverlay embedded taskReady={generateReady} onComplete={onGenerateComplete} title="正在爻卦" icon="☯" />
       )}
 
-      <p className="caption mb-3 text-app-muted">诚心发问 · 爻卦天机 · 剩余免费 {remaining} 次</p>
+      <p className="caption mb-3 text-app-muted">诚心发问 · 爻卦天机 · {formatPetFoodRemaining(remaining)}</p>
 
       {!result ? (
         <>
@@ -151,6 +155,7 @@ export default function LiuyaoHubPanel() {
           </button>
           <p className="mt-3 text-center text-[10px] text-app-muted">填写生辰 · 静心默念所问之事 · 再点击爻卦</p>
           {error && <p className="mt-3 text-center text-xs text-red-400">{error}</p>}
+          <LiuyaoHubDemo />
         </>
       ) : (
         <>
@@ -172,6 +177,7 @@ export default function LiuyaoHubPanel() {
               }`}>{result.luck}</span>
             </div>
           </div>
+          <AiDisclaimer className="mb-4" />
           <div className="app-card mb-4">
             <h3 className="mb-2 text-sm font-medium">卦象解读</h3>
             <p className="whitespace-pre-line text-xs leading-relaxed text-app-muted">{result.analysis}</p>

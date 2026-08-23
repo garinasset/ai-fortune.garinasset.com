@@ -29,7 +29,9 @@ import type { BirthInfo, SpiritPetProfile } from "@/lib/types";
 function AskPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const fromSpiritPet = searchParams.get("from") === "spirit-pet";
+  const fromParam = searchParams.get("from");
+  const fromSpiritPet = fromParam === "spirit-pet";
+  const fromLifekline = fromParam === "lifekline";
   const abilityParam = searchParams.get("ability");
 
   const [pet, setPet] = useState<SpiritPetProfile | null>(null);
@@ -58,9 +60,10 @@ function AskPageContent() {
   }, []);
 
   useLayoutEffect(() => {
-    if (!ready || !fromSpiritPet) return;
+    if (!ready || (!fromSpiritPet && !fromLifekline)) return;
     const section = searchParams.get("section");
     if (section === "daily-fortune" || section === "今日运势指引") return;
+    if (abilityParam?.includes("灵签")) return;
     if (
       abilityParam &&
       !abilityParam.includes("灵签") &&
@@ -69,7 +72,7 @@ function AskPageContent() {
       return;
     }
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
-  }, [ready, fromSpiritPet, abilityParam, searchParams]);
+  }, [ready, fromSpiritPet, fromLifekline, abilityParam, searchParams]);
 
   useEffect(() => {
     if (!abilityParam || abilityParam.includes("灵签") || abilityParam.includes("运势指引")) return;
@@ -93,14 +96,14 @@ function AskPageContent() {
         return;
       }
       const params = new URLSearchParams(searchParams.toString());
-      params.set("from", "spirit-pet");
+      params.set("from", fromLifekline ? "lifekline" : "spirit-pet");
       params.set("ability", name);
       router.push(`/ask?${params.toString()}`, { scroll: false });
       window.setTimeout(() => {
         document.getElementById("spirit-pet-chat")?.scrollIntoView({ behavior: "smooth", block: "start" });
       }, 200);
     },
-    [router, searchParams],
+    [router, searchParams, fromLifekline],
   );
 
   const fortuneBirth = birth ?? getEffectiveBirthInfo();
@@ -116,19 +119,36 @@ function AskPageContent() {
     return () => window.clearTimeout(timer);
   }, [searchParams, ready, pet, normalizedBirth]);
 
+  useEffect(() => {
+    if (!abilityParam?.includes("灵签")) return;
+    const timer = window.setTimeout(() => {
+      document.getElementById("fortune-stick")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [abilityParam, ready, pet, normalizedBirth]);
+
   if (!ready) {
     return <p className="caption text-center text-app-muted">加载中…</p>;
   }
 
   return (
     <>
-      {fromSpiritPet && (
+      {fromLifekline && (
+        <BackLink href="/lifekline" label="返回人生K线" className="mb-3" />
+      )}
+      {fromSpiritPet && !fromLifekline && (
         <BackLink href="/spirit-pet" label="返回 AI 灵宠" className="mb-3" />
       )}
 
       <PageHeader
         title="问AI灵宠"
-        subtitle={fromSpiritPet ? "与专属守护灵互动 · 点击能力即可体验" : "AI 灵宠在线答疑 · 命理智慧随时问"}
+        subtitle={
+          fromLifekline
+            ? "人生 K 线 · 灵宠每日指引"
+            : fromSpiritPet
+              ? "与专属守护灵互动 · 点击能力即可体验"
+              : "AI 灵宠在线答疑 · 命理智慧随时问"
+        }
       />
 
       <PageCarouselBanner slides={PAGE_BANNERS.ask} className="!mb-3 !pt-0" />

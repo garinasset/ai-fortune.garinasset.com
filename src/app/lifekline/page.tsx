@@ -12,7 +12,9 @@ import {
   sliceForwardPeriodFromFull,
 } from "@/lib/fortune-chart";
 import { calculateBazi } from "@/lib/bazi";
-import { canUse, incrementUsage, getRemaining, addHistory } from "@/lib/user-store";
+import { canUse, incrementUsage, addHistory } from "@/lib/user-store";
+import { usePetFoodRemaining } from "@/hooks/usePetFoodRemaining";
+import { formatPetFoodRemaining } from "@/lib/pet-food-remaining";
 import {
   saveRecord, buildPersonKey, buildPersonLabel,
 } from "@/lib/record-store";
@@ -27,12 +29,14 @@ import { LIFE_YEAR_OPTIONS } from "@/lib/life-year-options";
 import PageHeader from "@/components/ui/PageHeader";
 import PageCarouselBanner from "@/components/PageCarouselBanner";
 import FortuneHubNav, { type FortuneHubTab } from "@/components/FortuneHubNav";
+import AiDisclaimer from "@/components/AiDisclaimer";
 import LiuyaoHubPanel from "@/components/fortune-hub/LiuyaoHubPanel";
 import XiangHubPanel from "@/components/fortune-hub/XiangHubPanel";
 import MasterHubPanel from "@/components/fortune-hub/MasterHubPanel";
 import AskHubPanel from "@/components/fortune-hub/AskHubPanel";
 import RecordsHubPanel from "@/components/fortune-hub/RecordsHubPanel";
 import BaziHubPanel from "@/components/fortune-hub/BaziHubPanel";
+import { LifeklineHubDemo } from "@/components/fortune-hub/HubFeatureDemos";
 import FoodRulesModal from "@/components/FoodRulesModal";
 import { PAGE_BANNERS } from "@/lib/page-banners";
 
@@ -63,7 +67,7 @@ export default function LifeklinePage() {
   const [paywall, setPaywall] = useState(false);
   const [primaryModal, setPrimaryModal] = useState(false);
   const [lifeYears, setLifeYears] = useState(10);
-  const [remaining, setRemaining] = useState(5);
+  const remaining = usePetFoodRemaining();
   const [foodRulesOpen, setFoodRulesOpen] = useState(false);
   const [hubTab, setHubTab] = useState<FortuneHubTab>("lifekline");
   const [error, setError] = useState<string | null>(null);
@@ -78,7 +82,6 @@ export default function LifeklinePage() {
   } | null>(null);
 
   useEffect(() => {
-    setRemaining(getRemaining("lifekline"));
     const params = new URLSearchParams(window.location.search);
     const tab = params.get("tab");
     if (tab === "bazi" || tab === "liuyao" || tab === "xiang" || tab === "master" || tab === "ask" || tab === "records") {
@@ -180,15 +183,11 @@ export default function LifeklinePage() {
 
     (async () => {
       try {
-        const currentYear = new Date().getFullYear();
-        const [data, monthly] = await Promise.all([
-          requestLifeKline(birthInfo, 100),
-          requestMonthlyKline(birthInfo, currentYear),
-        ]);
+        const data = await requestLifeKline(birthInfo, 100);
         generateResultRef.current = {
           fullKline: data.fullKline,
           overall: data.overall,
-          currentYearMonthly: monthly,
+          currentYearMonthly: [],
         };
         setGenerateReady(true);
       } catch (err) {
@@ -318,7 +317,7 @@ export default function LifeklinePage() {
       <>
         <PageHeader
           title="人生 K 线"
-          subtitle={`命势推演，可视化排盘，剩余免费 ${remaining} 次`}
+          subtitle={`命势推演，可视化排盘，${formatPetFoodRemaining(remaining)}`}
         />
         <PageCarouselBanner slides={PAGE_BANNERS.lifekline} className="!mb-3 !pt-0" />
         <FortuneHubNav active={hubTab} onChange={setHubTab} />
@@ -338,7 +337,7 @@ export default function LifeklinePage() {
         title="人生 K 线"
         subtitle={
           <>
-            命势推演，可视化排盘，剩余免费 {remaining} 次（
+            命势推演，可视化排盘，{formatPetFoodRemaining(remaining)}（
             <button
               type="button"
               onClick={() => setFoodRulesOpen(true)}
@@ -380,6 +379,7 @@ export default function LifeklinePage() {
               ))}
             </div>
           </div>
+          <LifeklineHubDemo />
         </>
       )}
 
@@ -422,6 +422,7 @@ export default function LifeklinePage() {
             showBack={!!drillYear}
             onBack={handleBackFromDrill}
           />
+          {hasResult && <AiDisclaimer className="mt-2" />}
 
           {drillYear && monthlyLoading && (
             <p className="mt-2 text-center text-xs text-app-accent animate-pulse">正在加载该年的月度真实K线…</p>

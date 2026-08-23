@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { generateMonthlyKlineWithAI, isAIJsonParseError } from "@/lib/llm";
-import { getServerLLMConfig } from "@/lib/server-config";
 import { calculateBazi, formatBaziPrompt } from "@/lib/bazi";
-import { annotateKlineExtremes } from "@/lib/fortune-chart";
+import { normalizeBirthInfo } from "@/lib/birth-utils";
+import { annotateKlineExtremes, generateMonthlyKline } from "@/lib/fortune-chart";
 import type { BirthInfo } from "@/lib/types";
 
 export async function POST(req: NextRequest) {
@@ -16,26 +15,25 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "缺少参数" }, { status: 400 });
     }
 
-    let baziText: string | undefined;
+    let normalized: BirthInfo;
     try {
-      const bazi = calculateBazi(birthInfo);
-      baziText = formatBaziPrompt(bazi);
+      normalized = normalizeBirthInfo(birthInfo);
     } catch {
-      baziText = undefined;
+      return NextResponse.json({ error: "出生信息格式无效" }, { status: 400 });
     }
 
-    const kline = await generateMonthlyKlineWithAI(getServerLLMConfig(), {
-      birthInfo,
-      year,
-      baziText,
-    });
+    try {
+      calculateBazi(normalized);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "出生信息无效";
+      return NextResponse.json({ error: message }, { status: 400 });
+    }
 
-    return NextResponse.json({ kline: annotateKlineExtremes(kline) });
+    const kline = annotateKlineExtremes(generateMonthlyKline(normalized, year));
+
+    return NextResponse.json({ kline });
   } catch (e) {
     const message = e instanceof Error ? e.message : "服务器错误";
-    if (isAIJsonParseError(e) && process.env.NODE_ENV !== "production") {
-      return NextResponse.json({ error: message, debug: e.debug }, { status: 500 });
-    }
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

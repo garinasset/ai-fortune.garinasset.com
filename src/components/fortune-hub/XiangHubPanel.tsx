@@ -7,7 +7,9 @@ import XiangScanOverlay from "@/components/XiangScanOverlay";
 import GenerationOverlay from "@/components/GenerationOverlay";
 import PaywallModal from "@/components/PaywallModal";
 import ReportPosterButton, { SharePosterButton } from "@/components/ReportPosterButton";
-import { canUse, incrementUsage, getRemaining, addHistory } from "@/lib/user-store";
+import { canUse, incrementUsage, addHistory } from "@/lib/user-store";
+import { usePetFoodRemaining } from "@/hooks/usePetFoodRemaining";
+import { formatPetFoodRemaining } from "@/lib/pet-food-remaining";
 import { saveRecord, buildPersonKey, buildPersonLabel } from "@/lib/record-store";
 import PrimaryPersonModal from "@/components/PrimaryPersonModal";
 import { ensurePrimaryPersonBeforeCalc, getPersonDisplayName } from "@/lib/person-store";
@@ -17,6 +19,7 @@ import BoostFortuneButton from "@/components/BoostFortuneButton";
 import SegmentedControl from "@/components/ui/SegmentedControl";
 import { analyzeXiangImage } from "@/lib/xiang-analyze-client";
 import { saveSessionResult, loadSessionResult, clearSessionResult } from "@/lib/session-result-cache";
+import { XiangHubDemo } from "@/components/fortune-hub/HubFeatureDemos";
 import type { AnalysisResult } from "@/lib/types";
 
 type Tab = "palm" | "face";
@@ -38,7 +41,7 @@ export default function XiangHubPanel() {
   const [pendingType, setPendingType] = useState<Tab>("palm");
   const pendingPreview = useRef<string | null>(null);
   const resultRef = useRef<AnalysisResult | null>(null);
-  const remaining = getRemaining("xiang");
+  const remaining = usePetFoodRemaining();
 
   useEffect(() => {
     const cached = loadSessionResult<{ tab: Tab; preview: string; result: AnalysisResult }>("xiang");
@@ -114,7 +117,7 @@ export default function XiangHubPanel() {
 
   return (
     <div className="relative">
-      <p className="caption mb-3 text-app-muted">AI 智能 · 手相 & 面相 · 剩余免费 {remaining} 次</p>
+      <p className="caption mb-3 text-app-muted">AI 智能 · 手相 & 面相 · {formatPetFoodRemaining(remaining)}</p>
 
       <SegmentedControl
         value={tab}
@@ -154,6 +157,8 @@ export default function XiangHubPanel() {
           <p className="text-xs leading-relaxed text-app-text">上传照片后点击「AI 大师看相分析」，将基于你的图片实时生成专属解读。</p>
         </div>
       )}
+
+      {!preview && !result && !scanning && <XiangHubDemo />}
 
       {preview && !result && !scanning && (
         <>

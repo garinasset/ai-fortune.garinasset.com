@@ -1,5 +1,6 @@
 import { addMessage } from "./message-store";
 import { getOrCreateUser } from "./user-store";
+import { notifyPetFoodUpdated } from "./pet-food-remaining";
 
 export const USES_PER_BAG = 5;
 export const SIGNUP_GIFT_BAGS = 1;
@@ -15,18 +16,21 @@ export interface PetFoodPlan {
   id: string;
   label: string;
   price: number;
+  /** 展示用原价（划线价） */
+  originalPrice: number;
   desc: string;
   type: "bag" | "unlimited";
   days?: number;
   uses?: number;
+  recommended?: boolean;
 }
 
 export const PET_FOOD_PLANS: PetFoodPlan[] = [
-  { id: "bag", label: "一瓶灵丹", price: 19.9, desc: "可测算 5 次", type: "bag", uses: 5 },
-  { id: "3d", label: "三天灵丹", price: 39.9, desc: "三天随意测算", type: "unlimited", days: 3 },
-  { id: "month", label: "一个月灵丹", price: 299, desc: "30 天随意测算", type: "unlimited", days: 30 },
-  { id: "half", label: "半年灵丹", price: 599, desc: "183 天随意测算", type: "unlimited", days: 183 },
-  { id: "year", label: "一年灵丹", price: 899, desc: "365 天随意测算", type: "unlimited", days: 365 },
+  { id: "bag", label: "一瓶灵丹", price: 19.9, originalPrice: 29.9, desc: "可测算 5 次", type: "bag", uses: 5 },
+  { id: "3d", label: "三天灵丹", price: 39.9, originalPrice: 59.9, desc: "三天随意测算", type: "unlimited", days: 3 },
+  { id: "month", label: "一个月灵丹", price: 299, originalPrice: 399, desc: "30 天随意测算", type: "unlimited", days: 30, recommended: true },
+  { id: "half", label: "半年灵丹", price: 599, originalPrice: 799, desc: "183 天随意测算", type: "unlimited", days: 183 },
+  { id: "year", label: "一年灵丹", price: 899, originalPrice: 1199, desc: "365 天随意测算", type: "unlimited", days: 365 },
 ];
 
 const FOOD_KEY = "ai-fortune-pet-food";
@@ -100,6 +104,7 @@ export function consumePetFood(userId?: string): boolean {
   if (balance.giftedUses > 0) balance.giftedUses--;
   else balance.purchasedUses--;
   saveFood(id, balance);
+  notifyPetFoodUpdated();
   return true;
 }
 
@@ -107,6 +112,7 @@ export function grantGiftedFood(userId: string, bags = 1): void {
   const balance = getPetFoodBalance(userId);
   balance.giftedUses += bags * USES_PER_BAG;
   saveFood(userId, balance);
+  notifyPetFoodUpdated();
 }
 
 export function purchasePetFood(planId: string, userId?: string): PetFoodBalance {
@@ -122,6 +128,7 @@ export function purchasePetFood(planId: string, userId?: string): PetFoodBalance
     balance.unlimitedUntil = base.toISOString();
   }
   saveFood(id, balance);
+  notifyPetFoodUpdated();
   return balance;
 }
 
@@ -179,5 +186,6 @@ export function giftPetFood(fromUserId: string, toUserId: string, bags: number):
     content: `您已成功赠送 ${bags} 瓶灵丹，感谢分享～`,
     relatedUserId: toUserId,
   });
+  notifyPetFoodUpdated();
   return true;
 }

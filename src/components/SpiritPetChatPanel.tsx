@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Send, X } from "lucide-react";
-import { canUse, incrementUsage, getRemaining, addHistory } from "@/lib/user-store";
+import { canUse, incrementUsage, addHistory } from "@/lib/user-store";
+import { usePetFoodRemaining } from "@/hooks/usePetFoodRemaining";
+import { formatPetFoodRemaining } from "@/lib/pet-food-remaining";
 import { saveRecord, buildPersonKey, buildPersonLabel } from "@/lib/record-store";
 import { getEffectiveBirthInfo, loadBirthInfo } from "@/lib/birth-store";
 import { useApp } from "@/context/AppContext";
@@ -59,13 +61,9 @@ export default function SpiritPetChatPanel({
   const [loading, setLoading] = useState(false);
   const [paywall, setPaywall] = useState(false);
   const [primaryModal, setPrimaryModal] = useState(false);
-  const [remaining, setRemaining] = useState(5);
+  const remaining = usePetFoodRemaining();
   const messagesRef = useRef<HTMLDivElement>(null);
   const seededAbility = useRef<string | null>(null);
-
-  useEffect(() => {
-    setRemaining(getRemaining("aiAsk"));
-  }, [messages.length]);
 
   useEffect(() => {
     if (birthInfoProp) {
@@ -158,7 +156,6 @@ export default function SpiritPetChatPanel({
 
       setMessages((prev) => [...prev, { id: `p-${Date.now()}`, role: "pet", text: ans }]);
       incrementUsage("aiAsk");
-      setRemaining(getRemaining("aiAsk"));
       addHistory({ type: "aiAsk", title: q.slice(0, 30), data: { q, ans, birthInfo } });
       const personName = getPersonDisplayName(birthInfo, user?.nickname || ownerName);
       saveRecord({
@@ -202,7 +199,7 @@ export default function SpiritPetChatPanel({
           <p className="truncate text-sm font-semibold text-app-text">
             {pet?.fullName ?? "AI 灵宠"}
           </p>
-          <p className="text-[10px] text-app-muted">一对一私信 · 命理陪伴 · 剩余 {remaining} 次</p>
+          <p className="text-[10px] text-app-muted">一对一私信 · 命理陪伴 · {formatPetFoodRemaining(remaining)}</p>
         </div>
         {variant === "modal" && onClose && (
           <button type="button" onClick={onClose} className="rounded-lg p-1 text-app-muted hover:text-app-text">

@@ -13,13 +13,13 @@ import {
   isAbilityUnlocked,
   getCumulativeAbilities,
   normalizeLevel,
-  formatLevelBadge,
   resolveAbilityLink,
   getLevelTierClass,
 } from "@/lib/spirit-pet-growth";
 import { ChevronDown, ChevronUp, Info } from "lucide-react";
 import SpiritPetLevelModal from "@/components/SpiritPetLevelModal";
 import SpiritPetPowerModal from "@/components/SpiritPetPowerModal";
+import SpiritLevelBadge from "@/components/SpiritLevelBadge";
 import Badge from "@/components/ui/Badge";
 
 interface SpiritPetAwakeningPanelProps {
@@ -75,7 +75,7 @@ export default function SpiritPetAwakeningPanel({ pet, onGoTasks }: SpiritPetAwa
 
   const visibleStages = expanded
     ? AWAKENING_ROADMAP
-    : AWAKENING_ROADMAP.filter((s) => s.level === level || s.level === (next?.nextLevel ?? level));
+    : AWAKENING_ROADMAP.filter((s) => s.level === level);
 
   const cumulativeAbilities = getCumulativeAbilities(level);
 
@@ -93,26 +93,24 @@ export default function SpiritPetAwakeningPanel({ pet, onGoTasks }: SpiritPetAwa
 
   return (
     <>
-      <div className="app-card panel-awakening">
-        <div className="section-card-header !items-end">
+      <div className="app-card panel-awakening !p-3">
+        <div className="section-card-header !mb-2 !items-end">
           <div>
             <h2 className="panel-title text-app-accent">觉醒增长体系</h2>
-            <p className="panel-subtitle">积累灵力 · 逐级觉醒 · 解锁陪伴能力</p>
+            <p className="panel-subtitle !mt-0.5">积累灵力 · 逐级觉醒 · 解锁陪伴能力</p>
           </div>
         </div>
 
         {/* 当前阶段 + 灵力 */}
-        <div className="mb-4 grid grid-cols-[1fr_auto] items-center gap-3 border-b border-app-border/50 pb-4">
-          <div className="min-w-0 space-y-1">
+        <div className="mb-3 grid grid-cols-[1fr_auto] items-center gap-2 border-b border-app-border/50 pb-3">
+          <div className="min-w-0 space-y-0.5">
             <p className="block-label text-app-accent">觉醒阶段 · {stage.path}</p>
             <p className="block-title leading-snug">
-              <span className={`spirit-level-name ${getLevelTierClass(level)}`}>
-                {stage.icon} {formatLevelBadge(level)}
-              </span>
+              <SpiritLevelBadge level={level} size="md" icon={stage.icon} />
             </p>
             <p className="caption text-app-muted">「{stage.tagline}」</p>
-            <p className="caption mt-1 text-app-accent">
-              已解锁 {cumulativeAbilities.length} 项灵力技能（含此前等级）
+            <p className="caption text-app-accent">
+              已解锁 {cumulativeAbilities.length} 项灵力技能
             </p>
           </div>
           <button
@@ -127,7 +125,7 @@ export default function SpiritPetAwakeningPanel({ pet, onGoTasks }: SpiritPetAwa
 
         {/* 即将觉醒 */}
         {next ? (
-          <div className="mb-4 space-y-2.5 rounded-xl border border-app-accent/25 bg-app-accent/5 p-3">
+          <div className="mb-3 space-y-2 rounded-xl border border-app-accent/25 bg-app-accent/5 p-2.5">
             <div className="grid grid-cols-1 gap-1 sm:grid-cols-[1fr_auto] sm:items-center sm:gap-3">
               <p className="block-title leading-snug">✨ 即将觉醒 → {next.nextName}</p>
               <p className="caption font-semibold text-app-gold sm:text-right">还差 {next.remaining} 灵力</p>
@@ -143,13 +141,13 @@ export default function SpiritPetAwakeningPanel({ pet, onGoTasks }: SpiritPetAwa
             </button>
           </div>
         ) : (
-          <p className="mb-4 rounded-xl border border-app-gold/30 bg-app-gold/10 p-3 text-center block-title text-app-gold">
+          <p className="mb-3 rounded-xl border border-app-gold/30 bg-app-gold/10 p-2.5 text-center block-title text-app-gold">
             🌌 已达守护神形态，灵魂伙伴完全觉醒
           </p>
         )}
 
         {/* 觉醒等级 · 总进度 */}
-        <div className="mb-3 flex items-center justify-between gap-2">
+        <div className="mb-2 flex items-center justify-between gap-2">
           <p className="block-title">觉醒等级</p>
           <button
             type="button"
@@ -161,14 +159,10 @@ export default function SpiritPetAwakeningPanel({ pet, onGoTasks }: SpiritPetAwa
           </button>
         </div>
 
-        <div className="mb-4 rounded-xl border border-app-border/60 bg-app-bg/30 p-3">
-          <div className="caption mb-2 flex items-center justify-between font-medium">
-            <span className={`spirit-level-name spirit-level-name-sm ${getLevelTierClass(1)}`}>
-              🥉 LV1 初生灵宠
-            </span>
-            <span className={`spirit-level-name spirit-level-name-sm ${getLevelTierClass(6)}`}>
-              👑 LV6 守护神
-            </span>
+        <div className="mb-3 rounded-xl border border-app-border/60 bg-app-bg/30 p-2.5">
+          <div className="caption mb-1.5 flex items-center justify-between font-medium">
+            <SpiritLevelBadge level={1} size="sm" showName />
+            <SpiritLevelBadge level={6} size="sm" showName />
           </div>
           <div className="flex h-2.5 gap-0.5 overflow-hidden rounded-full">
             {AWAKENING_STAGES.map((s) => (
@@ -179,14 +173,14 @@ export default function SpiritPetAwakeningPanel({ pet, onGoTasks }: SpiritPetAwa
               />
             ))}
           </div>
-          <p className="caption mt-2 text-center font-semibold">
-            当前 <span className={`spirit-level-name !py-0 ${getLevelTierClass(level)}`}>{formatLevelBadge(level)}</span>
+          <p className="caption mt-1.5 text-center font-semibold">
+            当前 <SpiritLevelBadge level={level} size="sm" className="!py-0" />
             {" "}· {overall}%
           </p>
         </div>
 
         {/* 等级卡片列表 */}
-        <div className="space-y-2.5">
+        <div className="space-y-2">
           {visibleStages.map((roadStage) => {
             const awakened = isStageAwakened(level, roadStage.level);
             const stageDetail = AWAKENING_STAGES.find((s) => s.level === roadStage.level);
@@ -205,7 +199,7 @@ export default function SpiritPetAwakeningPanel({ pet, onGoTasks }: SpiritPetAwa
                     handleLevelCardClick(roadStage.level);
                   }
                 }}
-                className={`spirit-level-card cursor-pointer rounded-xl border p-3 transition-all ${
+                className={`spirit-level-card cursor-pointer rounded-xl border p-2.5 transition-all ${
                   awakened ? tint.awake : tint.locked
                 } ${isCurrent ? "ring-1 ring-app-gold/50" : ""} ${
                   activeLevel === roadStage.level ? "spirit-level-card-active" : ""
@@ -219,9 +213,7 @@ export default function SpiritPetAwakeningPanel({ pet, onGoTasks }: SpiritPetAwa
                     {roadStage.icon}
                   </span>
                   <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
-                    <span className={`spirit-level-name spirit-level-name-md ${getLevelTierClass(roadStage.level)}`}>
-                      LV{roadStage.level} {roadStage.name}
-                    </span>
+                    <SpiritLevelBadge level={roadStage.level} size="md" icon={roadStage.icon} />
                     <Badge variant={awakened ? "success" : "muted"} className="!py-0 shrink-0">
                       {awakened ? "已觉醒" : "未觉醒"}
                     </Badge>

@@ -6,10 +6,13 @@ import ReportPosterButton, { SharePosterButton } from "@/components/ReportPoster
 import PaywallModal from "@/components/PaywallModal";
 import HexagramLines from "@/components/HexagramLines";
 import { castHexagram, type HexagramResult } from "@/lib/liuyao";
-import { canUse, incrementUsage, getRemaining } from "@/lib/user-store";
+import { canUse, incrementUsage } from "@/lib/user-store";
+import { usePetFoodRemaining } from "@/hooks/usePetFoodRemaining";
+import { formatPetFoodRemaining } from "@/lib/pet-food-remaining";
 import { saveRecord, buildPersonKey } from "@/lib/record-store";
 import { useApp } from "@/context/AppContext";
 import PrimaryPersonModal from "@/components/PrimaryPersonModal";
+import AiDisclaimer from "@/components/AiDisclaimer";
 import { ensurePrimaryPersonBeforeCalc } from "@/lib/person-store";
 import { grantSpiritPowerForTask } from "@/lib/spirit-pet-tasks";
 import { saveSessionResult, loadSessionResult, clearSessionResult } from "@/lib/session-result-cache";
@@ -23,7 +26,7 @@ export default function LiuyaoPage() {
   const [error, setError] = useState<string | null>(null);
   const [paywall, setPaywall] = useState(false);
   const [primaryModal, setPrimaryModal] = useState(false);
-  const remaining = getRemaining("liuyao");
+  const remaining = usePetFoodRemaining();
 
   useEffect(() => {
     const cached = loadSessionResult<{ question: string; result: HexagramResult }>("liuyao");
@@ -91,7 +94,7 @@ export default function LiuyaoPage() {
 
   return (
     <>
-      <PageHeader title="AI 六爻" subtitle={`诚心发问 · 爻卦天机 · 剩余免费 ${remaining} 次`} />
+      <PageHeader title="AI 六爻" subtitle={`诚心发问 · 爻卦天机 · ${formatPetFoodRemaining(remaining)}`} />
 
       {!result ? (
         <>
@@ -131,6 +134,7 @@ export default function LiuyaoPage() {
               }`}>{result.luck}</span>
             </div>
           </div>
+          <AiDisclaimer className="mb-4" />
 
           <div className="app-card mb-4">
             <h3 className="mb-2 text-sm font-medium">卦象解读</h3>

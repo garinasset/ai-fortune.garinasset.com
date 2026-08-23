@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { X, Copy, Check } from "lucide-react";
 
-const WECHAT_ID = "294801955";
+const WECHAT_ID = "Holt710";
 
 interface ContactModalProps {
   open: boolean;

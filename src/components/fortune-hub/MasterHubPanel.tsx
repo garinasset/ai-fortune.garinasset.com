@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { CheckCircle } from "lucide-react";
 import { useApp } from "@/context/AppContext";
+import BirthForm from "@/components/BirthForm";
 import { submitMasterConsultWithSave } from "@/lib/submit-master-consult";
 import { ensurePrimaryPersonBeforeCalc } from "@/lib/person-store";
 import PrimaryPersonModal from "@/components/PrimaryPersonModal";
@@ -10,37 +11,30 @@ import BoostFortuneButton from "@/components/BoostFortuneButton";
 import MasterPayModal from "@/components/MasterPayModal";
 import Badge from "@/components/ui/Badge";
 import { MASTER_CONSULT_PRICE } from "@/lib/master-pay-store";
+import type { BirthInfo } from "@/lib/types";
 
 export default function MasterHubPanel() {
   const { user } = useApp();
   const [name, setName] = useState("");
-  const [year, setYear] = useState(1990);
-  const [month, setMonth] = useState(1);
-  const [day, setDay] = useState(1);
-  const [hour, setHour] = useState(12);
-  const [calendar, setCalendar] = useState<"solar" | "lunar">("solar");
+  const [birthDraft, setBirthDraft] = useState<BirthInfo | null>(null);
   const [question, setQuestion] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [primaryModal, setPrimaryModal] = useState(false);
   const [payModal, setPayModal] = useState(false);
 
   const submitConsult = () => {
-    if (!name.trim() || !question.trim() || !user) return;
+    if (!name.trim() || !question.trim() || !user || !birthDraft) return;
     submitMasterConsultWithSave({
       userId: user.id,
       name: name.trim(),
-      year,
-      month,
-      day,
-      hour,
-      calendar,
+      birthInfo: { ...birthDraft, name: name.trim() },
       question: question.trim(),
     });
     setSubmitted(true);
   };
 
   const handleSubmit = () => {
-    if (!name.trim() || !question.trim() || !user) return;
+    if (!name.trim() || !question.trim() || !birthDraft || !user) return;
     if (!ensurePrimaryPersonBeforeCalc()) { setPrimaryModal(true); return; }
     setPayModal(true);
   };
@@ -65,42 +59,40 @@ export default function MasterHubPanel() {
   return (
     <>
       <p className="caption mb-3 text-app-muted">资深命理师 · 一对一解答 · 不占用灵丹次数</p>
-      <div className="mb-4 text-center">
+      <div className="mb-3 text-center">
         <Badge variant="accent">单次咨询 ¥{MASTER_CONSULT_PRICE}</Badge>
       </div>
-      <div className="app-card space-y-4">
+      <div className="app-card !p-3 space-y-2">
         <div>
-          <label className="app-label">姓名</label>
-          <input className="app-input" placeholder="请输入您的姓名" value={name} onChange={(e) => setName(e.target.value)} />
+          <label className="mb-0.5 block text-[11px] font-medium text-app-muted">姓名</label>
+          <input
+            className="w-full rounded-lg border border-app-border bg-app-card px-2.5 py-1.5 text-sm text-app-text outline-none transition-colors focus:border-app-accent focus:shadow-[0_0_0_2px_var(--color-accent-glow)]"
+            placeholder="请输入您的姓名"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
         </div>
+        <BirthForm
+          onSubmit={() => {}}
+          onValuesChange={setBirthDraft}
+          hideSubmit
+          hideName
+          syncActivePerson={false}
+        />
         <div>
-          <label className="app-label">出生年月日时</label>
-          <div className="grid grid-cols-4 gap-2">
-            <input type="number" className="app-input !px-2 text-center" value={year} onChange={(e) => setYear(+e.target.value)} />
-            <input type="number" className="app-input !px-2 text-center" min={1} max={12} value={month} onChange={(e) => setMonth(+e.target.value)} />
-            <input type="number" className="app-input !px-2 text-center" min={1} max={31} value={day} onChange={(e) => setDay(+e.target.value)} />
-            <input type="number" className="app-input !px-2 text-center" min={0} max={23} value={hour} onChange={(e) => setHour(+e.target.value)} />
-          </div>
+          <label className="mb-0.5 block text-[11px] font-medium text-app-muted">所问何事？</label>
+          <textarea
+            className="w-full rounded-lg border border-app-border bg-app-card px-2.5 py-1.5 text-sm text-app-text outline-none transition-colors focus:border-app-accent focus:shadow-[0_0_0_2px_var(--color-accent-glow)] min-h-[100px] resize-none"
+            placeholder="请详细描述您想咨询的问题…"
+            value={question}
+            onChange={(e) => setQuestion(e.target.value)}
+          />
         </div>
-        <div>
-          <label className="app-label">历法</label>
-          <div className="flex gap-2">
-            {(["solar", "lunar"] as const).map((c) => (
-              <button key={c} onClick={() => setCalendar(c)}
-                className={`flex-1 rounded-xl border py-2 text-xs ${
-                  calendar === c ? "border-app-accent bg-app-accent/10 text-app-accent" : "border-app-border text-app-muted"
-                }`}>
-                {c === "solar" ? "阳历" : "农历"}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div>
-          <label className="app-label">所问何事？</label>
-          <textarea className="app-input min-h-[120px] resize-none" placeholder="请详细描述您想咨询的问题…"
-            value={question} onChange={(e) => setQuestion(e.target.value)} />
-        </div>
-        <button onClick={handleSubmit} disabled={!name.trim() || !question.trim()} className="app-btn">
+        <button
+          onClick={handleSubmit}
+          disabled={!name.trim() || !question.trim() || !birthDraft}
+          className="app-btn app-btn-sm mt-1 w-full"
+        >
           支付 ¥{MASTER_CONSULT_PRICE} 并提交咨询
         </button>
       </div>

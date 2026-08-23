@@ -3,9 +3,31 @@
 import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import SpiritGourdIcon, { SpiritGourdHeading } from "@/components/icons/SpiritGourdIcon";
-import { PET_FOOD_PLANS, purchasePetFood, getPaymentQrUrl } from "@/lib/pet-food-store";
+import { PET_FOOD_PLANS, purchasePetFood, getPaymentQrUrl, type PetFoodPlan } from "@/lib/pet-food-store";
 
 type Step = "plans" | "method" | "qrcode" | "success";
+
+function formatPlanPrice(value: number): string {
+  return Number.isInteger(value) ? String(value) : value.toFixed(1);
+}
+
+function PlanPriceDisplay({ plan, size = "md" }: { plan: PetFoodPlan; size?: "md" | "lg" }) {
+  const originalClass = size === "lg" ? "text-xs" : "text-[10px]";
+  const currentClass = size === "lg"
+    ? "text-xl font-bold text-app-gold drop-shadow-[0_0_8px_rgba(212,165,116,0.45)]"
+    : "text-base font-bold text-app-gold drop-shadow-[0_0_6px_rgba(212,165,116,0.35)]";
+
+  return (
+    <div className={`flex shrink-0 items-baseline justify-end gap-1.5 whitespace-nowrap ${originalClass}`}>
+      <span className="text-app-muted/55 line-through decoration-app-muted/45">
+        原价¥{formatPlanPrice(plan.originalPrice)}
+      </span>
+      <span className={currentClass}>
+        现价¥{formatPlanPrice(plan.price)}
+      </span>
+    </div>
+  );
+}
 
 interface BuyFoodModalProps {
   open: boolean;
@@ -83,7 +105,10 @@ export default function BuyFoodModal({ open, onClose, onPurchased }: BuyFoodModa
             <p className={`text-sm font-medium ${methodColor}`}>
               请使用{methodLabel}扫码支付
             </p>
-            <p className="mt-1 text-xs text-app-muted">{selectedPlan.label} · ¥{selectedPlan.price}</p>
+            <p className="mt-1 text-xs text-app-muted">{selectedPlan.label}</p>
+            <div className="mt-1 flex justify-center">
+              <PlanPriceDisplay plan={selectedPlan} size="lg" />
+            </div>
             <div className="mx-auto mt-4 inline-block rounded-2xl border border-app-border bg-white p-3">
               <img src={qrUrl} alt={`${methodLabel}支付二维码`} className="h-52 w-52" />
             </div>
@@ -107,7 +132,9 @@ export default function BuyFoodModal({ open, onClose, onPurchased }: BuyFoodModa
         ) : step === "method" && selectedPlan ? (
           <div>
             <p className="mb-1 text-center text-xs text-app-muted">已选：{selectedPlan.label}</p>
-            <p className="mb-4 text-center text-lg font-bold text-app-accent">¥{selectedPlan.price}</p>
+            <div className="mb-4 flex justify-center">
+              <PlanPriceDisplay plan={selectedPlan} size="lg" />
+            </div>
             <p className="mb-4 text-center text-xs text-app-muted">请选择支付方式</p>
             <div className="space-y-2">
               <button
@@ -135,14 +162,26 @@ export default function BuyFoodModal({ open, onClose, onPurchased }: BuyFoodModa
                 <button
                   key={plan.id}
                   onClick={() => handleSelectPlan(plan.id)}
-                  className="flex w-full items-center gap-3 rounded-xl border border-app-border px-4 py-3 text-left transition-colors hover:border-app-gold"
+                  className={`flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left transition-colors hover:border-app-gold ${
+                    plan.recommended
+                      ? "border-app-gold/50 bg-gradient-to-r from-red-500/10 via-app-gold/8 to-transparent"
+                      : "border-app-border"
+                  }`}
                 >
-                  <SpiritGourdIcon className="h-8 w-8 text-app-gold" title="灵丹" />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-app-text">{plan.label}</p>
+                  <SpiritGourdIcon className="h-8 w-8 shrink-0 text-app-gold" title="灵丹" />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <p className="text-sm font-medium text-app-text">{plan.label}</p>
+                      {plan.recommended && (
+                        <span className="food-plan-hot-badge inline-flex items-center gap-1 rounded-full border border-red-400/50 bg-red-500/20 px-3 py-1 text-sm font-bold text-red-400">
+                          <span className="food-plan-fire text-lg leading-none" aria-hidden>🔥</span>
+                          【推荐】
+                        </span>
+                      )}
+                    </div>
                     <p className="text-[10px] text-app-muted">{plan.desc}</p>
                   </div>
-                  <p className="text-base font-bold text-app-accent">¥{plan.price}</p>
+                  <PlanPriceDisplay plan={plan} />
                 </button>
               ))}
             </div>

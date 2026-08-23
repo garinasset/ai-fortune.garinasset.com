@@ -199,7 +199,7 @@ export const SPIRIT_TASK_DEFS: {
   desc?: string;
 }[] = [
   { id: "checkIn", label: "今日签到", reward: SPIRIT_POWER_REWARDS.checkIn },
-  { id: "inviteFriend", label: "邀请好友", reward: SPIRIT_POWER_REWARDS.inviteFriend, desc: "下载二维码成功即完成" },
+  { id: "inviteFriend", label: "邀请好友", reward: SPIRIT_POWER_REWARDS.inviteFriend },
   { id: "chat", label: "和灵宠聊天", reward: SPIRIT_POWER_REWARDS.dailyChat, href: "/ask?from=spirit-pet" },
   { id: "liuyao", label: "去测运势", reward: SPIRIT_POWER_REWARDS.liuyao, href: "/liuyao" },
   { id: "communityPost", label: "社区发帖", reward: SPIRIT_POWER_REWARDS.communityPost, href: "/community", desc: "发帖后自动发放" },

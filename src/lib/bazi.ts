@@ -1,6 +1,7 @@
 // @ts-expect-error lunar-javascript has no types
 import { Solar, Lunar } from "lunar-javascript";
 import type { BirthInfo, BaziResult, DayunItem, LiunianItem } from "./types";
+import { toSolarBirthInfo, normalizeBirthInfo } from "./birth-utils";
 
 const TIAN_GAN = ["甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"];
 const DI_ZHI = ["子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"];
@@ -62,7 +63,8 @@ function calculateLiunian(birthYear: number, currentYear: number, dayun: DayunIt
 }
 
 export function calculateBazi(info: BirthInfo): BaziResult {
-  const solar = Solar.fromYmdHms(info.year, info.month, info.day, info.hour, info.minute, 0);
+  const solarInfo = toSolarBirthInfo(normalizeBirthInfo(info));
+  const solar = Solar.fromYmdHms(solarInfo.year, solarInfo.month, solarInfo.day, solarInfo.hour, solarInfo.minute, 0);
   const lunar = solar.getLunar();
   const eightChar = lunar.getEightChar();
 
@@ -80,9 +82,9 @@ export function calculateBazi(info: BirthInfo): BaziResult {
   const monthGanIndex = TIAN_GAN.indexOf(monthGan);
   const monthZhiIndex = DI_ZHI.indexOf(monthZhi);
 
-  const dayun = calculateDayun(info.year, monthGanIndex, monthZhiIndex, info.gender, isYangYear);
+  const dayun = calculateDayun(solarInfo.year, monthGanIndex, monthZhiIndex, solarInfo.gender, isYangYear);
   const currentYear = new Date().getFullYear();
-  const liunian = calculateLiunian(info.year, currentYear, dayun);
+  const liunian = calculateLiunian(solarInfo.year, currentYear, dayun);
 
   const wuxingCount: Record<string, number> = { 木: 0, 火: 0, 土: 0, 金: 0, 水: 0 };
   [yearGan, yearZhi, monthGan, monthZhi, dayGan, dayZhi, timeGan, timeZhi].forEach((c) => {
@@ -93,9 +95,9 @@ export function calculateBazi(info: BirthInfo): BaziResult {
 
   return {
     name: info.name,
-    gender: info.gender === "male" ? "男" : "女",
-    solarDate: `${info.year}年${info.month}月${info.day}日 ${String(info.hour).padStart(2, "0")}:${String(info.minute).padStart(2, "0")}`,
-    lunarDate: `${lunar.getYearInChinese()}年${lunar.getMonthInChinese()}月${lunar.getDayInChinese()}`,
+    gender: solarInfo.gender === "male" ? "男" : "女",
+    solarDate: `${solarInfo.year}年${solarInfo.month}月${solarInfo.day}日 ${String(solarInfo.hour).padStart(2, "0")}:${String(solarInfo.minute).padStart(2, "0")}`,
+    lunarDate: `${lunar.getYearInChinese()}年${lunar.getMonthInChinese()}月${lunar.getDayInChinese()} ${timeZhi}时`,
     bazi: {
       year: yearGan + yearZhi,
       month: monthGan + monthZhi,

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import type { BirthInfo } from "@/lib/types";
 import { saveBirthInfo, getEffectiveBirthInfo, loadBirthInfo } from "@/lib/birth-store";
+import { formatBirthConversionHint } from "@/lib/birth-utils";
 
 const PERSONALITY_OPTIONS = [
   "温柔陪伴",
@@ -69,6 +70,19 @@ export default function SpiritPetClaimForm({ onSubmit, loading }: SpiritPetClaim
 
   if (!loaded) return null;
 
+  const buildInfo = (): BirthInfo => ({
+    year, month, day, hour, minute, gender,
+    name: name || undefined,
+    calendar,
+    birthPlace: birthPlace.trim() || undefined,
+    personalityPreference,
+  });
+
+  let conversionHint = "";
+  try {
+    conversionHint = formatBirthConversionHint(buildInfo());
+  } catch { /* ignore */ }
+
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
       <div>
@@ -107,6 +121,9 @@ export default function SpiritPetClaimForm({ onSubmit, loading }: SpiritPetClaim
           <input type="number" className="app-input" min={1} max={12} value={month} onChange={(e) => setMonth(+e.target.value)} />
           <input type="number" className="app-input" min={1} max={31} value={day} onChange={(e) => setDay(+e.target.value)} />
         </div>
+        {conversionHint && (
+          <p className="mt-1 text-[10px] leading-snug text-app-accent/90">{conversionHint}</p>
+        )}
       </div>
 
       <div>

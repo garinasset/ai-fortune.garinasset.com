@@ -98,7 +98,7 @@ export function getOrCreateUser(refCode?: string): UserProfile {
     subscription: null,
   };
   localStorage.setItem(USER_KEY, JSON.stringify(user));
-  localStorage.setItem(USAGE_KEY, JSON.stringify({ lifekline: 0, xiang: 0, aiAsk: 0, liuyao: 0 }));
+  localStorage.setItem(USAGE_KEY, JSON.stringify({ lifekline: 0, bazi: 0, xiang: 0, aiAsk: 0, liuyao: 0 }));
   initPetFoodForUser(id);
   ensureNicknameRegistered(id, user.nickname);
 
@@ -124,18 +124,18 @@ export function updateUser(patch: Partial<UserProfile>): UserProfile {
 }
 
 export function getUsage(): UsageRecord {
-  if (typeof window === "undefined") return { lifekline: 0, xiang: 0, aiAsk: 0, liuyao: 0 };
+  if (typeof window === "undefined") return { lifekline: 0, bazi: 0, xiang: 0, aiAsk: 0, liuyao: 0 };
   try {
     const raw = safeLocalGet(USAGE_KEY);
     const usage = safeJsonParse<Partial<UsageRecord>>(raw, {});
-    return { lifekline: 0, xiang: 0, aiAsk: 0, liuyao: 0, ...usage };
+    return { lifekline: 0, bazi: 0, xiang: 0, aiAsk: 0, liuyao: 0, ...usage };
   } catch {
-    return { lifekline: 0, xiang: 0, aiAsk: 0, liuyao: 0 };
+    return { lifekline: 0, bazi: 0, xiang: 0, aiAsk: 0, liuyao: 0 };
   }
 }
 
 export function incrementUsage(_type: keyof UsageRecord): UsageRecord {
-  consumePetFood();
+  if (!consumePetFood()) return getUsage();
   const usage = getUsage();
   usage[_type]++;
   localStorage.setItem(USAGE_KEY, JSON.stringify(usage));
@@ -256,7 +256,7 @@ export function registerUser(params: {
       createdAt: new Date().toISOString(),
       subscription: null,
     };
-    safeLocalSet(USAGE_KEY, JSON.stringify({ lifekline: 0, xiang: 0, aiAsk: 0, liuyao: 0 }));
+    safeLocalSet(USAGE_KEY, JSON.stringify({ lifekline: 0, bazi: 0, xiang: 0, aiAsk: 0, liuyao: 0 }));
     initPetFoodForUser(id);
   } else if (params.nickname?.trim()) {
     user.nickname = params.nickname.trim();

@@ -7,12 +7,15 @@ import AnalysisPanel from "@/components/AnalysisPanel";
 import PaywallModal from "@/components/PaywallModal";
 import PrimaryPersonModal from "@/components/PrimaryPersonModal";
 import BoostFortuneButton from "@/components/BoostFortuneButton";
-import { canUse, incrementUsage, getRemaining } from "@/lib/user-store";
+import { canUse, incrementUsage } from "@/lib/user-store";
+import { usePetFoodRemaining } from "@/hooks/usePetFoodRemaining";
+import { formatPetFoodRemaining } from "@/lib/pet-food-remaining";
 import { saveRecord, buildPersonKey, buildPersonLabel } from "@/lib/record-store";
 import { saveBirthInfo } from "@/lib/birth-store";
 import { ensurePrimaryPersonBeforeCalc, getPersonDisplayName } from "@/lib/person-store";
 import { saveSessionResult, loadSessionResult, clearSessionResult } from "@/lib/session-result-cache";
 import type { BirthInfo, BaziResult, AnalysisResult } from "@/lib/types";
+import { BaziHubDemo } from "@/components/fortune-hub/HubFeatureDemos";
 
 interface BaziSessionState {
   birthInfo: BirthInfo;
@@ -30,7 +33,7 @@ export default function BaziHubPanel() {
   const [primaryModal, setPrimaryModal] = useState(false);
   const [generateReady, setGenerateReady] = useState(false);
   const generateResultRef = useRef<BaziSessionState | null>(null);
-  const remaining = getRemaining("lifekline");
+  const remaining = usePetFoodRemaining();
 
   useEffect(() => {
     const cached = loadSessionResult<BaziSessionState>("bazi");
@@ -47,7 +50,7 @@ export default function BaziHubPanel() {
       setPrimaryModal(true);
       return;
     }
-    if (!canUse("lifekline")) {
+    if (!canUse("bazi")) {
       setPaywall(true);
       return;
     }
@@ -92,7 +95,7 @@ export default function BaziHubPanel() {
 
     setBazi(pending.bazi);
     setAnalysis(pending.analysis);
-    incrementUsage("lifekline");
+    incrementUsage("bazi");
     saveBirthInfo(pending.birthInfo);
     const personName = getPersonDisplayName(pending.birthInfo, `命理者${pending.birthInfo.year}`);
     saveRecord({
@@ -126,7 +129,7 @@ export default function BaziHubPanel() {
     return (
       <div className="page-section">
         <p className="caption mb-3 text-app-muted">
-          四柱八字 · {getPersonDisplayName(birthInfo)} · 剩余免费 {remaining} 次
+          四柱八字 · {getPersonDisplayName(birthInfo)} · {formatPetFoodRemaining(remaining)}
         </p>
         <AnalysisPanel result={analysis} bazi={bazi} />
         <div className="mt-4 space-y-2">
@@ -152,12 +155,13 @@ export default function BaziHubPanel() {
   return (
     <>
       <p className="caption mb-3 text-app-muted">
-        四柱八字 · 独立排盘测算 · 剩余免费 {remaining} 次
+        四柱八字 · 独立排盘测算 · {formatPetFoodRemaining(remaining)}
       </p>
       <div className="app-card !p-3 mb-3">
         <BirthForm onSubmit={handleSubmit} submitLabel="生成八字排盘" />
       </div>
       {error && <p className="mb-3 text-xs text-red-400">{error}</p>}
+      <BaziHubDemo />
       <PaywallModal open={paywall} onClose={() => setPaywall(false)} feature="八字排盘" />
       <PrimaryPersonModal open={primaryModal} onClose={() => setPrimaryModal(false)} />
     </>

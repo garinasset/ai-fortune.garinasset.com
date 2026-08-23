@@ -2,7 +2,9 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Send, Sparkles } from "lucide-react";
-import { canUse, incrementUsage, getRemaining, addHistory } from "@/lib/user-store";
+import { canUse, incrementUsage, addHistory } from "@/lib/user-store";
+import { usePetFoodRemaining } from "@/hooks/usePetFoodRemaining";
+import { formatPetFoodRemaining } from "@/lib/pet-food-remaining";
 import { saveRecord, buildPersonKey, buildPersonLabel } from "@/lib/record-store";
 import { loadBirthInfo, saveBirthInfo, getEffectiveBirthInfo, formatBirthSummary } from "@/lib/birth-store";
 import { useApp } from "@/context/AppContext";
@@ -52,12 +54,7 @@ export default function AiAskBox({
   const [loading, setLoading] = useState(false);
   const [paywall, setPaywall] = useState(false);
   const [primaryModal, setPrimaryModal] = useState(false);
-  const [remaining, setRemaining] = useState(5);
-  const [answerError, setAnswerError] = useState(false);
-
-  useEffect(() => {
-    setRemaining(getRemaining("aiAsk"));
-  }, [answer]);
+  const remaining = usePetFoodRemaining();
 
   useEffect(() => {
     if (birthInfoProp) {
@@ -124,7 +121,6 @@ export default function AiAskBox({
 
     setAnswer(ans);
     incrementUsage("aiAsk");
-    setRemaining(getRemaining("aiAsk"));
     addHistory({ type: "aiAsk", title: q.slice(0, 30), data: { q, ans, birthInfo } });
     const personName = getPersonDisplayName(birthInfo, user?.nickname || ownerName);
     saveRecord({
@@ -198,7 +194,7 @@ export default function AiAskBox({
               {fromSpiritPet ? "与灵宠对话" : "问AI灵宠"}
             </h3>
           </div>
-          <span className="text-[10px] text-app-muted">剩余 {remaining} 次免费</span>
+          <span className="text-[10px] text-app-muted">{formatPetFoodRemaining(remaining)}</span>
         </div>
 
         {needsBirth && (

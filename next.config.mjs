@@ -6,6 +6,16 @@ const nextConfig = {
       { protocol: "https", hostname: "api.qrserver.com" },
     ],
   },
+  webpack: (config, { dev }) => {
+    if (dev) {
+      config.watchOptions = {
+        poll: 1000,
+        aggregateTimeout: 300,
+        ignored: ["**/node_modules/**", "**/.git/**"],
+      };
+    }
+    return config;
+  },
   async redirects() {
     return [
       { source: "/bazi", destination: "/lifekline", permanent: false },

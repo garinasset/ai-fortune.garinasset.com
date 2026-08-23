@@ -6,6 +6,7 @@ import {
   generateOverallAnalysis,
   annotateKlineExtremes,
 } from "./fortune-chart";
+import { normalizeBirthInfo, toSolarBirthInfo } from "./birth-utils";
 import {
   getMockBaziAnalysis,
   getMockImageAnalysis,
@@ -263,8 +264,14 @@ export function getImageAnalysisDescription(type: "palm" | "face"): string {
 
 function formatBirthInfoForPrompt(birthInfo?: BirthInfo): string {
   if (!birthInfo) return "未提供生辰信息";
-  const cal = birthInfo.calendar === "lunar" ? "农历" : "阳历";
-  return `${birthInfo.name ? `姓名：${birthInfo.name}；` : ""}${cal} ${birthInfo.year}-${birthInfo.month}-${birthInfo.day} ${birthInfo.hour}:${birthInfo.minute}；性别：${birthInfo.gender === "male" ? "男" : "女"}${birthInfo.birthPlace ? `；出生地：${birthInfo.birthPlace}` : ""}`;
+  const normalized = normalizeBirthInfo(birthInfo);
+  const cal = normalized.calendar === "lunar" ? "农历" : "阳历";
+  const solar = normalized.calendar === "lunar" ? toSolarBirthInfo(normalized) : normalized;
+  const solarNote =
+    normalized.calendar === "lunar"
+      ? `；对应阳历 ${solar.year}-${solar.month}-${solar.day} ${solar.hour}:${solar.minute}`
+      : "";
+  return `${birthInfo.name ? `姓名：${birthInfo.name}；` : ""}${cal} ${normalized.year}-${normalized.month}-${normalized.day} ${normalized.hour}:${normalized.minute}${solarNote}；性别：${normalized.gender === "male" ? "男" : "女"}${birthInfo.birthPlace ? `；出生地：${birthInfo.birthPlace}` : ""}`;
 }
 
 function clamp(min: number, max: number, value: number): number {
@@ -389,7 +396,9 @@ export async function generateLifeKlineWithAI(
 ): Promise<{ periodKline: KlineData[]; fullKline: KlineData[]; overall: OverallAnalysis }> {
   const now = new Date();
   const currentYear = now.getFullYear();
-  const currentAge = currentYear - params.birthInfo.year;
+  const currentAge = currentYear - (params.birthInfo.calendar === "lunar"
+    ? toSolarBirthInfo(normalizeBirthInfo(params.birthInfo)).year
+    : params.birthInfo.year);
   const requestYears = clamp(1, 100, params.years || 10);
   const includeWholeLife = params.includeWholeLife ?? requestYears >= 100;
 

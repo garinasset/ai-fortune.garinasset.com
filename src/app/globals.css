@@ -544,6 +544,19 @@
 }
 .spirit-pet-glow { animation: spirit-pet-glow 4s ease-in-out infinite; }
 
+@keyframes food-plan-fire-flicker {
+  0%, 100% { transform: scale(1) rotate(-6deg); opacity: 1; filter: drop-shadow(0 0 4px rgba(248, 113, 113, 0.8)); }
+  50% { transform: scale(1.15) rotate(6deg); opacity: 0.85; filter: drop-shadow(0 0 8px rgba(251, 146, 60, 0.95)); }
+}
+.food-plan-fire {
+  display: inline-block;
+  animation: food-plan-fire-flicker 0.9s ease-in-out infinite;
+}
+.food-plan-hot-badge {
+  box-shadow: 0 0 12px rgba(248, 113, 113, 0.25);
+  animation: pulse-soft 2s ease-in-out infinite;
+}
+
 @keyframes spirit-pet-sparkle {
   0%, 100% { opacity: 0; transform: scale(0.5); }
   50% { opacity: 1; transform: scale(1.1); }
@@ -575,7 +588,32 @@
 
 /* ─── Spirit level tiers (game-style progression) ─── */
 .spirit-level-name {
-  @apply inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[12px] font-bold leading-tight;
+  @apply inline-flex items-center gap-0.5 rounded-full border px-2.5 py-0.5 text-[12px] font-bold leading-tight;
+}
+
+.spirit-level-prefix {
+  font-size: 0.72em;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  opacity: 0.85;
+}
+
+.spirit-level-num {
+  font-size: 1.28em;
+  font-weight: 900;
+  line-height: 1;
+  margin: 0 1px;
+  color: #ffffff;
+  -webkit-text-stroke: 0.6px rgba(0, 0, 0, 0.55);
+  text-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.85),
+    0 0 10px rgba(255, 255, 255, 0.45);
+}
+
+.spirit-level-title {
+  margin-left: 2px;
+  font-size: 0.92em;
+  font-weight: 700;
 }
 
 .spirit-level-name-sm {
@@ -604,25 +642,45 @@
 }
 
 .spirit-level-tier-1 {
-  border-color: color-mix(in srgb, #cd7f32 70%, var(--color-border));
+  border-color: color-mix(in srgb, #cd7f32 80%, var(--color-border));
   background: linear-gradient(
     135deg,
-    color-mix(in srgb, #cd7f32 22%, var(--color-card)) 0%,
-    color-mix(in srgb, #cd7f32 8%, var(--color-card)) 100%
+    color-mix(in srgb, #cd7f32 28%, var(--color-card)) 0%,
+    color-mix(in srgb, #cd7f32 10%, var(--color-card)) 100%
   );
   color: #e8a857;
-  box-shadow: 0 0 12px color-mix(in srgb, #cd7f32 25%, transparent);
+  box-shadow: 0 0 16px color-mix(in srgb, #cd7f32 35%, transparent);
+}
+
+.spirit-level-tier-1 .spirit-level-prefix {
+  color: #b87333;
+}
+
+.spirit-level-tier-1 .spirit-level-num {
+  color: #fff4d6;
+  -webkit-text-stroke: 0.6px rgba(80, 40, 0, 0.75);
+  text-shadow: 0 0 10px #ffb347, 0 1px 3px rgba(0, 0, 0, 0.8);
 }
 
 .spirit-level-tier-2 {
-  border-color: color-mix(in srgb, #94a3b8 70%, var(--color-border));
+  border-color: color-mix(in srgb, #94a3b8 80%, var(--color-border));
   background: linear-gradient(
     135deg,
-    color-mix(in srgb, #94a3b8 22%, var(--color-card)) 0%,
-    color-mix(in srgb, #94a3b8 8%, var(--color-card)) 100%
+    color-mix(in srgb, #94a3b8 28%, var(--color-card)) 0%,
+    color-mix(in srgb, #64748b 12%, var(--color-card)) 100%
   );
   color: #cbd5e1;
-  box-shadow: 0 0 12px color-mix(in srgb, #94a3b8 25%, transparent);
+  box-shadow: 0 0 16px color-mix(in srgb, #94a3b8 35%, transparent);
+}
+
+.spirit-level-tier-2 .spirit-level-prefix {
+  color: #64748b;
+}
+
+.spirit-level-tier-2 .spirit-level-num {
+  color: #f8fafc;
+  -webkit-text-stroke: 0.6px rgba(15, 23, 42, 0.75);
+  text-shadow: 0 0 10px #cbd5e1, 0 1px 3px rgba(0, 0, 0, 0.8);
 }
 
 .spirit-level-tier-3 {
@@ -636,6 +694,12 @@
   box-shadow: 0 0 14px color-mix(in srgb, #fbbf24 30%, transparent);
 }
 
+.spirit-level-tier-3 .spirit-level-num {
+  color: #fffbeb;
+  -webkit-text-stroke: 0.6px rgba(120, 53, 15, 0.75);
+  text-shadow: 0 0 10px #fbbf24, 0 1px 3px rgba(0, 0, 0, 0.8);
+}
+
 .spirit-level-tier-4 {
   border-color: color-mix(in srgb, #38bdf8 65%, var(--color-border));
   background: linear-gradient(
@@ -647,6 +711,12 @@
   box-shadow: 0 0 14px color-mix(in srgb, #38bdf8 28%, transparent);
 }
 
+.spirit-level-tier-4 .spirit-level-num {
+  color: #ecfeff;
+  -webkit-text-stroke: 0.6px rgba(12, 74, 110, 0.75);
+  text-shadow: 0 0 10px #38bdf8, 0 1px 3px rgba(0, 0, 0, 0.8);
+}
+
 .spirit-level-tier-5 {
   border-color: color-mix(in srgb, #a78bfa 70%, var(--color-border));
   background: linear-gradient(
@@ -656,6 +726,12 @@
   );
   color: #ddd6fe;
   box-shadow: 0 0 16px color-mix(in srgb, #a78bfa 32%, transparent);
+}
+
+.spirit-level-tier-5 .spirit-level-num {
+  color: #faf5ff;
+  -webkit-text-stroke: 0.6px rgba(76, 29, 149, 0.75);
+  text-shadow: 0 0 10px #c084fc, 0 1px 3px rgba(0, 0, 0, 0.8);
 }
 
 .spirit-level-tier-6 {
@@ -670,6 +746,12 @@
     0 0 18px color-mix(in srgb, var(--color-gold) 40%, transparent),
     inset 0 0 8px color-mix(in srgb, var(--color-gold) 15%, transparent);
   animation: spirit-level-pulse 2.5s ease-in-out infinite;
+}
+
+.spirit-level-tier-6 .spirit-level-num {
+  color: #fff8e7;
+  -webkit-text-stroke: 0.6px rgba(120, 53, 15, 0.8);
+  text-shadow: 0 0 12px var(--color-gold), 0 1px 3px rgba(0, 0, 0, 0.85);
 }
 
 @keyframes spirit-level-pulse {
@@ -795,4 +877,134 @@
 .spirit-level-up-ring-delay {
   animation: spirit-level-up-ring 1.4s ease-out 0.45s infinite;
   border: 2px solid color-mix(in srgb, var(--color-accent) 55%, transparent);
+}
+
+/* ─── Temple fortune stick (今日灵签) ─── */
+.fortune-cylinder-wrap {
+  position: relative;
+  width: 120px;
+  height: 132px;
+}
+
+.fortune-cylinder-shadow {
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  width: 88px;
+  height: 14px;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(0, 0, 0, 0.35) 0%, transparent 70%);
+}
+
+.fortune-cylinder {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.fortune-cylinder-rim {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  z-index: 3;
+  width: 92px;
+  height: 14px;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: linear-gradient(180deg, #e8c878 0%, #c9a45c 55%, #8b6914 100%);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+
+.fortune-cylinder-body {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  z-index: 2;
+  width: 84px;
+  height: 96px;
+  transform: translateX(-50%);
+  border-radius: 8px 8px 12px 12px;
+  background: linear-gradient(90deg, #6b3a1f 0%, #8b4513 35%, #a0522d 50%, #8b4513 65%, #6b3a1f 100%);
+  box-shadow: inset -4px 0 8px rgba(0, 0, 0, 0.25), inset 4px 0 8px rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.fortune-cylinder-pattern {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 0.35em;
+  color: rgba(212, 165, 116, 0.22);
+  writing-mode: vertical-rl;
+}
+
+.fortune-sticks-bundle {
+  position: absolute;
+  top: -4px;
+  left: 0;
+  right: 0;
+  height: 36px;
+}
+
+.fortune-stick {
+  position: absolute;
+  bottom: 0;
+  width: 4px;
+  border-radius: 2px 2px 0 0;
+  background: linear-gradient(180deg, #f5e6c8 0%, #d4a574 60%, #c9a45c 100%);
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.2);
+}
+
+.fortune-cylinder-base {
+  position: absolute;
+  bottom: 18px;
+  left: 50%;
+  z-index: 1;
+  width: 96px;
+  height: 16px;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: linear-gradient(180deg, #8b6914 0%, #5c3317 100%);
+}
+
+.fortune-cylinder-shaking .fortune-cylinder {
+  animation: fortune-cylinder-shake 0.35s ease-in-out infinite;
+}
+
+.fortune-cylinder-shaking .fortune-stick {
+  animation: fortune-stick-rattle 0.28s ease-in-out infinite;
+}
+
+@keyframes fortune-cylinder-shake {
+  0%, 100% { transform: rotate(0deg) translateY(0); }
+  20% { transform: rotate(-8deg) translateY(-2px); }
+  40% { transform: rotate(7deg) translateY(1px); }
+  60% { transform: rotate(-6deg) translateY(-1px); }
+  80% { transform: rotate(5deg) translateY(0); }
+}
+
+@keyframes fortune-stick-rattle {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  25% { transform: translateY(-3px) rotate(-4deg); }
+  50% { transform: translateY(1px) rotate(3deg); }
+  75% { transform: translateY(-2px) rotate(-2deg); }
+}
+
+.fortune-shake-text {
+  animation: fortune-text-pulse 1s ease-in-out infinite;
+}
+
+@keyframes fortune-text-pulse {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+
+.fortune-draw-btn:hover .fortune-cylinder-wrap {
+  transform: translateY(-2px);
+  transition: transform 0.2s ease;
 }

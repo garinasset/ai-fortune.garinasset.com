@@ -81,7 +81,7 @@ export default function GenerationOverlay({
   useEffect(() => {
     if (!syncMode || !taskReady) return;
     setProgress(100);
-    const timer = setTimeout(() => onComplete?.(), 420);
+    const timer = setTimeout(() => onComplete?.(), 120);
     return () => clearTimeout(timer);
   }, [syncMode, taskReady, onComplete]);
 

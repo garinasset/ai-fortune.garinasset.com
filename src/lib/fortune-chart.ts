@@ -1,5 +1,6 @@
-import type { BirthInfo, KlineData, BaziResult } from "./types";
+import type { BirthInfo, KlineData, BaziResult, OverallAnalysis } from "./types";
 import { calculateBazi } from "./bazi";
+import { toSolarBirthInfo, normalizeBirthInfo } from "./birth-utils";
 
 function safeCalculateBazi(info: BirthInfo): BaziResult | null {
   try {
@@ -17,11 +18,16 @@ function seededRandom(seed: number): () => number {
   };
 }
 
+function resolveSolarInfo(info: BirthInfo): BirthInfo {
+  return toSolarBirthInfo(normalizeBirthInfo(info));
+}
+
 export function hashBirth(info: BirthInfo): number {
+  const solar = resolveSolarInfo(info);
   const cal = info.calendar === "lunar" ? 2 : 1;
   return (
-    info.year * 10000 + info.month * 100 + info.day +
-    info.hour * 60 + info.minute + (info.gender === "male" ? 1 : 0) + cal
+    solar.year * 10000 + solar.month * 100 + solar.day +
+    solar.hour * 60 + solar.minute + (solar.gender === "male" ? 1 : 0) + cal
   );
 }
 
@@ -133,15 +139,16 @@ function advanceCloseToAge(info: BirthInfo, targetAge: number): number {
 
 /** 0–100 岁完整人生 K 线 */
 export function generateFullLifeKline(info: BirthInfo): KlineData[] {
+  const solarInfo = resolveSolarInfo(info);
   const bazi = safeCalculateBazi(info);
   const seed = hashBirth(info);
   const rand = seededRandom(seed);
-  const currentAge = getCurrentAge(info.year, info.month, info.day);
+  const currentAge = getCurrentAge(solarInfo.year, solarInfo.month, solarInfo.day);
   const data: KlineData[] = [];
   let prevClose = 48 + (seed % 15);
 
   for (let age = 0; age <= 100; age++) {
-    const year = info.year + age;
+    const year = solarInfo.year + age;
     const { bar, nextClose } = buildYearBar(info, age, year, prevClose, seed, rand, bazi, {
       isBirth: age === 0,
       isCurrent: age === currentAge,
@@ -156,17 +163,18 @@ export function generateFullLifeKline(info: BirthInfo): KlineData[] {
 
 /** 从今年起未来 N 年的年 K 线（铺满横轴） */
 export function generateForwardYearsKline(info: BirthInfo, count: number): KlineData[] {
+  const solarInfo = resolveSolarInfo(info);
   const bazi = safeCalculateBazi(info);
   const seed = hashBirth(info);
   const rand = seededRandom(seed + 9999);
   const currentYear = new Date().getFullYear();
-  const currentAge = getCurrentAge(info.year, info.month, info.day);
+  const currentAge = getCurrentAge(solarInfo.year, solarInfo.month, solarInfo.day);
   let prevClose = advanceCloseToAge(info, currentAge);
 
   const data: KlineData[] = [];
   for (let i = 0; i < count; i++) {
     const year = currentYear + i;
-    const age = year - info.year;
+    const age = year - solarInfo.year;
     const { bar, nextClose } = buildYearBar(info, age, year, prevClose, seed + i, rand, bazi, {
       isCurrent: i === 0,
       xLabel: i === 0 ? `${year}\n今年·${age}岁` : `${year}\n${age}岁`,
@@ -179,9 +187,10 @@ export function generateForwardYearsKline(info: BirthInfo, count: number): Kline
 
 /** 某一自然年的 12 个月 K 线 */
 export function generateMonthlyKline(info: BirthInfo, targetYear: number): KlineData[] {
+  const solarInfo = resolveSolarInfo(info);
   const seed = hashBirth(info) + targetYear * 100;
   const rand = seededRandom(seed);
-  const age = targetYear - info.year;
+  const age = targetYear - solarInfo.year;
   const now = new Date();
   const isThisYear = targetYear === now.getFullYear();
   const data: KlineData[] = [];
@@ -356,4 +365,19 @@ export function generateIntradayData(info: BirthInfo, year: number) {
 
 export function generateKlineData(info: BirthInfo, years: number): KlineData[] {
   return generateForwardYearsKline(info, years);
+}
+
+/** 本地快速生成人生 K 线（无 AI 调用，毫秒级） */
+export function generateLifeKlineBundle(
+  info: BirthInfo,
+  years: number,
+  includeWholeLife = true,
+): { periodKline: KlineData[]; fullKline: KlineData[]; overall: OverallAnalysis } {
+  const requestYears = Math.max(1, Math.min(100, years || 10));
+  const periodKline = annotateKlineExtremes(generateForwardYearsKline(info, requestYears));
+  const fullKline = annotateKlineExtremes(
+    includeWholeLife ? generateFullLifeKline(info) : periodKline,
+  );
+  const overall = generateOverallAnalysis(fullKline, info);
+  return { periodKline, fullKline, overall };
 }

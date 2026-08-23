@@ -130,6 +130,7 @@ export interface UserProfile {
 
 export interface UsageRecord {
   lifekline: number;
+  bazi: number;
   xiang: number;
   aiAsk: number;
   liuyao: number;

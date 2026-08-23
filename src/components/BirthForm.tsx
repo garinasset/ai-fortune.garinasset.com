@@ -11,6 +11,7 @@ import {
   getCitiesForProvince,
   parseBirthPlace,
 } from "@/lib/birth-regions";
+import { formatBirthConversionHint } from "@/lib/birth-utils";
 
 interface BirthFormProps {
   onSubmit: (info: BirthInfo) => void;
@@ -20,6 +21,7 @@ interface BirthFormProps {
   syncActivePerson?: boolean;
   onValuesChange?: (info: BirthInfo) => void;
   hideSubmit?: boolean;
+  hideName?: boolean;
   formId?: string;
 }
 
@@ -38,6 +40,7 @@ export default function BirthForm({
   syncActivePerson = true,
   onValuesChange,
   hideSubmit,
+  hideName,
   formId,
 }: BirthFormProps) {
   const now = new Date();
@@ -111,6 +114,14 @@ export default function BirthForm({
 
   if (!loaded) return null;
 
+  const conversionHint = (() => {
+    try {
+      return formatBirthConversionHint(buildInfo());
+    } catch {
+      return "";
+    }
+  })();
+
   return (
     <form id={formId} onSubmit={handleSubmit} className="space-y-2">
       <div>
@@ -124,7 +135,20 @@ export default function BirthForm({
         </div>
       </div>
 
-      {!compact && (
+      {!compact && hideName && (
+        <div>
+          <label className={fieldLabel}>性别</label>
+          <div className="flex gap-1.5">
+            {(["male", "female"] as const).map((g) => (
+              <button key={g} type="button" onClick={() => setGender(g)} className={toggleBtn(gender === g)}>
+                {g === "male" ? "男" : "女"}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {!compact && !hideName && (
         <div className="grid grid-cols-2 gap-2">
           <div>
             <label className={fieldLabel}>姓名（选填）</label>
@@ -143,7 +167,7 @@ export default function BirthForm({
         </div>
       )}
 
-      {compact && (
+      {compact && !hideName && (
         <div className="grid grid-cols-2 gap-2">
           <div>
             <label className={fieldLabel}>性别</label>
@@ -173,6 +197,9 @@ export default function BirthForm({
           <input type="number" className={fieldInput} min={0} max={23} value={hour} onChange={(e) => setHour(+e.target.value)} placeholder="时" title="时" />
           <input type="number" className={fieldInput} min={0} max={59} value={minute} onChange={(e) => setMinute(+e.target.value)} placeholder="分" title="分" />
         </div>
+        {conversionHint && (
+          <p className="mt-1 text-[10px] leading-snug text-app-accent/90">{conversionHint}</p>
+        )}
       </div>
 
       <div>

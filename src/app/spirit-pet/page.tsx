@@ -313,10 +313,10 @@ function SpiritPetPageContent() {
         </button>
       </section>
 
-      <SpiritPetStageIntro pet={pet} className="!mb-4" />
+      <SpiritPetStageIntro pet={pet} className="!mb-2" />
 
       {(pet.destinyInsights ?? []).length > 0 && (
-        <SectionCard variant="destiny" title="命格解读" subtitle={`为何是 ${pet.fullName}？ · 基于八字命格匹配`}>
+        <SectionCard variant="destiny" title="命格解读" subtitle={`为何是 ${pet.fullName}？ · 基于八字命格匹配`} className="!mb-2">
           <ul className="space-y-2">
             {pet.destinyInsights!.map((line, i) => (
               <li key={i} className="body-text">• {line}</li>
@@ -325,20 +325,20 @@ function SpiritPetPageContent() {
         </SectionCard>
       )}
 
-      <section ref={awakeningRef} id="spirit-awakening" className="page-section scroll-mt-4">
+      <section ref={awakeningRef} id="spirit-awakening" className="page-section !mt-2 !mb-2 scroll-mt-4">
         <SpiritPetAwakeningPanel pet={pet} onGoTasks={scrollToTasks} />
       </section>
 
       <SpiritPetMatchFriendsButton unlocked={petLevel >= 2} />
 
-      <section className="page-section scroll-mt-4">
+      <section className="page-section !mt-2 !mb-2 scroll-mt-4">
         <Link href="/shop" className="app-btn-gold flex items-center justify-center gap-2">
           <ShoppingBag className="h-5 w-5" />
           去灵宠商城逛逛
         </Link>
       </section>
 
-      <section ref={tasksRef} id="spirit-tasks" className="page-section scroll-mt-4">
+      <section ref={tasksRef} id="spirit-tasks" className="page-section !mt-2 scroll-mt-4">
         <SpiritPetTasksPanel personKey={personKey} onPowerGained={refreshPet} />
       </section>
 
