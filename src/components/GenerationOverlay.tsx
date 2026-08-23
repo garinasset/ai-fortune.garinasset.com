@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const DEFAULT_STEPS = [
   "正在连接命理推演引擎...",
@@ -25,6 +25,8 @@ interface GenerationOverlayProps {
   embedded?: boolean;
   /** 传入后与真实任务同步：完成前进度最高约 92%，taskReady 为 true 后再到 100% */
   taskReady?: boolean;
+  /** sync 模式下最短展示时长（毫秒），避免 AI 返回过快时动画一闪而过 */
+  minDuration?: number;
 }
 
 export default function GenerationOverlay({
@@ -37,10 +39,18 @@ export default function GenerationOverlay({
   icon = "☯",
   embedded = false,
   taskReady,
+  minDuration = 5000,
 }: GenerationOverlayProps) {
   const [step, setStep] = useState(0);
   const [progress, setProgress] = useState(0);
   const syncMode = taskReady !== undefined;
+  const startedAtRef = useRef(Date.now());
+
+  useEffect(() => {
+    startedAtRef.current = Date.now();
+    setStep(0);
+    setProgress(0);
+  }, [syncMode, title]);
 
   useEffect(() => {
     if (syncMode) {
@@ -81,9 +91,11 @@ export default function GenerationOverlay({
   useEffect(() => {
     if (!syncMode || !taskReady) return;
     setProgress(100);
-    const timer = setTimeout(() => onComplete?.(), 120);
+    const elapsed = Date.now() - startedAtRef.current;
+    const wait = Math.max(0, minDuration - elapsed);
+    const timer = setTimeout(() => onComplete?.(), wait);
     return () => clearTimeout(timer);
-  }, [syncMode, taskReady, onComplete]);
+  }, [syncMode, taskReady, onComplete, minDuration]);
 
   const stepText = message ?? steps[step];
 

@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import { generateLifeKlineWithAI, isAIJsonParseError } from "@/lib/llm";
+import { getServerLLMConfig } from "@/lib/server-config";
 import { calculateBazi, formatBaziPrompt } from "@/lib/bazi";
 import { normalizeBirthInfo } from "@/lib/birth-utils";
-import { generateLifeKlineBundle } from "@/lib/fortune-chart";
+import { annotateKlineExtremes } from "@/lib/fortune-chart";
 import type { BirthInfo } from "@/lib/types";
 
 export async function POST(req: NextRequest) {
@@ -24,19 +26,32 @@ export async function POST(req: NextRequest) {
 
     const normalizedYears = Math.max(1, Math.min(100, Number(years) || 10));
 
-    // 验证八字可排（农历会自动转阳历）
+    let baziText: string | undefined;
     try {
-      calculateBazi(normalizedBirthInfo);
+      const bazi = calculateBazi(normalizedBirthInfo);
+      baziText = formatBaziPrompt(bazi);
     } catch (e) {
       const message = e instanceof Error ? e.message : "出生信息无效";
       return NextResponse.json({ error: message }, { status: 400 });
     }
 
-    const data = generateLifeKlineBundle(normalizedBirthInfo, normalizedYears, true);
+    const data = await generateLifeKlineWithAI(getServerLLMConfig(), {
+      birthInfo: normalizedBirthInfo,
+      years: normalizedYears,
+      includeWholeLife: true,
+      baziText,
+    });
 
-    return NextResponse.json(data);
+    return NextResponse.json({
+      ...data,
+      periodKline: annotateKlineExtremes(data.periodKline),
+      fullKline: annotateKlineExtremes(data.fullKline),
+    });
   } catch (e) {
     const message = e instanceof Error ? e.message : "服务器错误";
+    if (isAIJsonParseError(e) && process.env.NODE_ENV !== "production") {
+      return NextResponse.json({ error: message, debug: e.debug }, { status: 500 });
+    }
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -322,7 +322,7 @@ export default function LifeklinePage() {
         <PageCarouselBanner slides={PAGE_BANNERS.lifekline} className="!mb-3 !pt-0" />
         <FortuneHubNav active={hubTab} onChange={setHubTab} />
         <div className="relative min-h-[320px]">
-          <GenerationOverlay embedded taskReady={generateReady} onComplete={onGenerateComplete} />
+          <GenerationOverlay embedded taskReady={generateReady} onComplete={onGenerateComplete} minDuration={5000} />
         </div>
       </>
     );

@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import { generateMonthlyKlineWithAI, isAIJsonParseError } from "@/lib/llm";
+import { getServerLLMConfig } from "@/lib/server-config";
 import { calculateBazi, formatBaziPrompt } from "@/lib/bazi";
 import { normalizeBirthInfo } from "@/lib/birth-utils";
-import { annotateKlineExtremes, generateMonthlyKline } from "@/lib/fortune-chart";
+import { annotateKlineExtremes } from "@/lib/fortune-chart";
 import type { BirthInfo } from "@/lib/types";
 
 export async function POST(req: NextRequest) {
@@ -22,18 +24,27 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "出生信息格式无效" }, { status: 400 });
     }
 
+    let baziText: string | undefined;
     try {
-      calculateBazi(normalized);
+      const bazi = calculateBazi(normalized);
+      baziText = formatBaziPrompt(bazi);
     } catch (e) {
       const message = e instanceof Error ? e.message : "出生信息无效";
-      return NextResponse.json({ error: message }, { status: 400 });
+      return NextResponse.json({ error: message }, { status: 500 });
     }
 
-    const kline = annotateKlineExtremes(generateMonthlyKline(normalized, year));
+    const kline = await generateMonthlyKlineWithAI(getServerLLMConfig(), {
+      birthInfo: normalized,
+      year,
+      baziText,
+    });
 
-    return NextResponse.json({ kline });
+    return NextResponse.json({ kline: annotateKlineExtremes(kline) });
   } catch (e) {
     const message = e instanceof Error ? e.message : "服务器错误";
+    if (isAIJsonParseError(e) && process.env.NODE_ENV !== "production") {
+      return NextResponse.json({ error: message, debug: e.debug }, { status: 500 });
+    }
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
