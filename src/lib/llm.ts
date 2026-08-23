@@ -5,6 +5,7 @@ import {
   generateMonthlyKline,
   generateOverallAnalysis,
   annotateKlineExtremes,
+  sliceForwardPeriodFromFull,
 } from "./fortune-chart";
 import { normalizeBirthInfo, toSolarBirthInfo } from "./birth-utils";
 import {
@@ -392,6 +393,8 @@ export async function generateLifeKlineWithAI(
     years: number;
     includeWholeLife?: boolean;
     baziText?: string;
+    /** 仅生成 0–100 岁全览 K 线（跳过年份段请求，用于后台加载） */
+    fullLifeOnly?: boolean;
   }
 ): Promise<{ periodKline: KlineData[]; fullKline: KlineData[]; overall: OverallAnalysis }> {
   const now = new Date();
@@ -400,16 +403,21 @@ export async function generateLifeKlineWithAI(
     ? toSolarBirthInfo(normalizeBirthInfo(params.birthInfo)).year
     : params.birthInfo.year);
   const requestYears = clamp(1, 100, params.years || 10);
-  const includeWholeLife = params.includeWholeLife ?? requestYears >= 100;
+  const includeWholeLife = params.fullLifeOnly || (params.includeWholeLife ?? requestYears >= 100);
 
   if (isMockMode(config)) {
     await simulateAnalysisDelay();
-    const periodKline = generateForwardYearsKline(params.birthInfo, requestYears);
-    const fullKline = includeWholeLife
-      ? generateFullLifeKline(params.birthInfo)
-      : periodKline;
-    const overall = generateOverallAnalysis(fullKline, params.birthInfo);
-    return { periodKline, fullKline, overall };
+    const fullKline = annotateKlineExtremes(generateFullLifeKline(params.birthInfo));
+    const periodKline = params.fullLifeOnly
+      ? annotateKlineExtremes(sliceForwardPeriodFromFull(fullKline, requestYears))
+      : annotateKlineExtremes(generateForwardYearsKline(params.birthInfo, requestYears));
+    const full = includeWholeLife ? fullKline : periodKline;
+    const overall = generateOverallAnalysis(full, params.birthInfo);
+    return {
+      periodKline,
+      fullKline: includeWholeLife ? fullKline : periodKline,
+      overall,
+    };
   }
 
   try {
@@ -429,6 +437,12 @@ export async function generateLifeKlineWithAI(
       message.includes("未返回");
     if (!shouldFallback) throw err;
     console.error("[generateLifeKlineWithAI] AI failed, using local fallback:", err);
+    if (params.fullLifeOnly) {
+      const fullKline = annotateKlineExtremes(generateFullLifeKline(params.birthInfo));
+      const periodKline = annotateKlineExtremes(sliceForwardPeriodFromFull(fullKline, requestYears));
+      const overall = generateOverallAnalysis(fullKline, params.birthInfo);
+      return { periodKline, fullKline, overall };
+    }
     const periodKline = annotateKlineExtremes(
       generateForwardYearsKline(params.birthInfo, requestYears),
     );
@@ -447,6 +461,7 @@ async function generateLifeKlineFromLLM(
     years: number;
     includeWholeLife?: boolean;
     baziText?: string;
+    fullLifeOnly?: boolean;
   },
   ctx: {
     currentYear: number;
@@ -461,21 +476,33 @@ async function generateLifeKlineFromLLM(
 
   const llmConfig = requireLLMConfig(config);
 
-  const period = await completeJson<LifeKlineAiResult>(
-    llmConfig,
-    "你是一名命理数据分析师。请严格输出 json（json_object），不要输出额外文本。",
-    `请根据下列用户信息，生成“人生K线”的结构化数据。\n用户信息：${birthText}${baziNote}\n当前年份：${currentYear}，当前年龄约：${currentAge}。\n要求：\n1) 生成未来 ${requestYears} 年的年K线（从当前年份开始，必须连续、升序、不得缺年）。\n2) kline 为数组，每项包含 year, age, open, close, high, low，可选 ganZhi。\n3) 必须满足 age = year - 出生年。\n4) 所有数值范围 1-100，且满足 high >= max(open, close), low <= min(open, close)。\n5) K线风格需接近股票市场：存在上升段、回撤段、震荡段，不允许长期单边；任意连续同向K线不超过 4 根。\n6) 邻近年份变化要平滑，避免不合理断崖跳变（通常 |close-open| <= 15，且相邻 close 差值通常 <= 18）。\n7) 生成 summary（100-220字）和 dimensions（11个维度，key/label/score/text）。\n8) dimensions 的 key 使用：overall,career,wealth,marriage,noble,health,safety,family,love,personality,fengshui。\n9) 输出紧凑 json，不要换行注释，不要多余字段。\n返回格式示例：{\"summary\":\"...\",\"kline\":[{\"year\":2026,\"age\":28,\"open\":62,\"close\":68,\"high\":72,\"low\":58}],\"dimensions\":[{\"key\":\"overall\",\"label\":\"整体命势\",\"score\":72,\"text\":\"...\"}]}`,
-    { maxTokens: 8000, temperature: 0.4 },
-  );
-
+  let period: LifeKlineAiResult;
   let full: LifeKlineAiResult | null = null;
-  if (includeWholeLife) {
+
+  if (params.fullLifeOnly) {
     full = await completeJson<LifeKlineAiResult>(
       llmConfig,
       "你是一名命理数据分析师。请严格输出 json（json_object），不要输出额外文本。",
       `请根据下列用户信息，生成“人生K线 0-100岁”的结构化数据。\n用户信息：${birthText}${baziNote}\n要求：\n1) kline 必须按年龄从 0 到 100（共 101 项，连续、升序、不得缺失），且 year=出生年+age。\n2) 每项仅包含 year, age, open, close, high, low（不要 ganZhi，不要多余字段）。\n3) 所有数值范围 1-100，且满足 high >= max(open, close), low <= min(open, close)。\n4) K线风格需接近股票市场：不同人生阶段有趋势切换与波动，不允许 10 年以上明显单边；任意连续同向K线不超过 4 根。\n5) 邻近年龄变化要平滑，避免不合理断崖跳变（通常 |close-open| <= 15，且相邻 close 差值通常 <= 18）。\n6) 生成 summary（100-220字）和 dimensions（11个维度，key/label/score/text）。\n7) dimensions 的 key 使用：overall,career,wealth,marriage,noble,health,safety,family,love,personality,fengshui。\n8) 输出紧凑 json，不要换行注释，不要多余字段。\n返回格式示例：{\"summary\":\"...\",\"kline\":[{\"year\":1998,\"age\":0,\"open\":50,\"close\":52,\"high\":55,\"low\":46}],\"dimensions\":[{\"key\":\"overall\",\"label\":\"整体命势\",\"score\":72,\"text\":\"...\"}]}`,
       { maxTokens: 16384, temperature: 0.35 },
     );
+    period = { summary: full.summary ?? "", kline: [], dimensions: full.dimensions ?? [] };
+  } else {
+    period = await completeJson<LifeKlineAiResult>(
+    llmConfig,
+    "你是一名命理数据分析师。请严格输出 json（json_object），不要输出额外文本。",
+    `请根据下列用户信息，生成“人生K线”的结构化数据。\n用户信息：${birthText}${baziNote}\n当前年份：${currentYear}，当前年龄约：${currentAge}。\n要求：\n1) 生成未来 ${requestYears} 年的年K线（从当前年份开始，必须连续、升序、不得缺年）。\n2) kline 为数组，每项包含 year, age, open, close, high, low，可选 ganZhi。\n3) 必须满足 age = year - 出生年。\n4) 所有数值范围 1-100，且满足 high >= max(open, close), low <= min(open, close)。\n5) K线风格需接近股票市场：存在上升段、回撤段、震荡段，不允许长期单边；任意连续同向K线不超过 4 根。\n6) 邻近年份变化要平滑，避免不合理断崖跳变（通常 |close-open| <= 15，且相邻 close 差值通常 <= 18）。\n7) 生成 summary（100-220字）和 dimensions（11个维度，key/label/score/text）。\n8) dimensions 的 key 使用：overall,career,wealth,marriage,noble,health,safety,family,love,personality,fengshui。\n9) 输出紧凑 json，不要换行注释，不要多余字段。\n返回格式示例：{\"summary\":\"...\",\"kline\":[{\"year\":2026,\"age\":28,\"open\":62,\"close\":68,\"high\":72,\"low\":58}],\"dimensions\":[{\"key\":\"overall\",\"label\":\"整体命势\",\"score\":72,\"text\":\"...\"}]}`,
+    { maxTokens: 8000, temperature: 0.4 },
+  );
+
+    if (includeWholeLife) {
+      full = await completeJson<LifeKlineAiResult>(
+      llmConfig,
+      "你是一名命理数据分析师。请严格输出 json（json_object），不要输出额外文本。",
+      `请根据下列用户信息，生成“人生K线 0-100岁”的结构化数据。\n用户信息：${birthText}${baziNote}\n要求：\n1) kline 必须按年龄从 0 到 100（共 101 项，连续、升序、不得缺失），且 year=出生年+age。\n2) 每项仅包含 year, age, open, close, high, low（不要 ganZhi，不要多余字段）。\n3) 所有数值范围 1-100，且满足 high >= max(open, close), low <= min(open, close)。\n4) K线风格需接近股票市场：不同人生阶段有趋势切换与波动，不允许 10 年以上明显单边；任意连续同向K线不超过 4 根。\n5) 邻近年龄变化要平滑，避免不合理断崖跳变（通常 |close-open| <= 15，且相邻 close 差值通常 <= 18）。\n6) 生成 summary（100-220字）和 dimensions（11个维度，key/label/score/text）。\n7) dimensions 的 key 使用：overall,career,wealth,marriage,noble,health,safety,family,love,personality,fengshui。\n8) 输出紧凑 json，不要换行注释，不要多余字段。\n返回格式示例：{\"summary\":\"...\",\"kline\":[{\"year\":1998,\"age\":0,\"open\":50,\"close\":52,\"high\":55,\"low\":46}],\"dimensions\":[{\"key\":\"overall\",\"label\":\"整体命势\",\"score\":72,\"text\":\"...\"}]}`,
+      { maxTokens: 16384, temperature: 0.35 },
+    );
+    }
   }
 
   function applyMarketWave(rows: KlineData[], mode: "period" | "full"): KlineData[] {
@@ -627,6 +654,19 @@ async function generateLifeKlineFromLLM(
       text: d.text || "",
     }));
   };
+
+  if (params.fullLifeOnly && full) {
+    const fullKline = annotateKlineExtremes(applyMarketWave(normalizeFullKline(full.kline), "full"));
+    if (!fullKline.length) throw new Error("AI 返回的人生K线数据不完整");
+    return {
+      periodKline: annotateKlineExtremes(sliceForwardPeriodFromFull(fullKline, requestYears)),
+      fullKline,
+      overall: {
+        summary: String(full.summary || "").trim(),
+        dimensions: normalizeDimensions(full.dimensions),
+      },
+    };
+  }
 
   const periodKline = annotateKlineExtremes(
     applyMarketWave(normalizePeriodKline(period.kline), "period"),

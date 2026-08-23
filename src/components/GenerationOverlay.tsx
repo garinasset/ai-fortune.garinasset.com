@@ -27,6 +27,8 @@ interface GenerationOverlayProps {
   taskReady?: boolean;
   /** sync 模式下最短展示时长（毫秒），避免 AI 返回过快时动画一闪而过 */
   minDuration?: number;
+  /** sync 模式下等待 AI 时进度条上限（0-100） */
+  waitingCap?: number;
 }
 
 export default function GenerationOverlay({
@@ -39,15 +41,18 @@ export default function GenerationOverlay({
   icon = "☯",
   embedded = false,
   taskReady,
-  minDuration = 5000,
+  minDuration = 0,
+  waitingCap = 96,
 }: GenerationOverlayProps) {
   const [step, setStep] = useState(0);
   const [progress, setProgress] = useState(0);
   const syncMode = taskReady !== undefined;
   const startedAtRef = useRef(Date.now());
+  const completedRef = useRef(false);
 
   useEffect(() => {
     startedAtRef.current = Date.now();
+    completedRef.current = false;
     setStep(0);
     setProgress(0);
   }, [syncMode, title]);
@@ -56,14 +61,15 @@ export default function GenerationOverlay({
     if (syncMode) {
       const stepInterval = setInterval(() => {
         setStep((s) => Math.min(s + 1, steps.length - 1));
-      }, 900);
+      }, 1100);
 
       const progressInterval = setInterval(() => {
         setProgress((p) => {
-          if (taskReady) return Math.min(p + 6, 100);
-          return Math.min(p + 0.6, 92);
+          const increment = taskReady ? 1.1 : 0.32;
+          const cap = taskReady ? 100 : waitingCap;
+          return Math.min(p + increment, cap);
         });
-      }, 180);
+      }, 100);
 
       return () => {
         clearInterval(stepInterval);
@@ -86,16 +92,15 @@ export default function GenerationOverlay({
       clearInterval(progressInterval);
       if (timer) clearTimeout(timer);
     };
-  }, [duration, onComplete, steps.length, syncMode, taskReady]);
+  }, [duration, onComplete, steps.length, syncMode, taskReady, waitingCap]);
 
   useEffect(() => {
-    if (!syncMode || !taskReady) return;
+    if (!syncMode || !taskReady || completedRef.current || progress < 99.5) return;
+    completedRef.current = true;
     setProgress(100);
-    const elapsed = Date.now() - startedAtRef.current;
-    const wait = Math.max(0, minDuration - elapsed);
-    const timer = setTimeout(() => onComplete?.(), wait);
-    return () => clearTimeout(timer);
-  }, [syncMode, taskReady, onComplete, minDuration]);
+    const timer = window.setTimeout(() => onComplete?.(), 420);
+    return () => window.clearTimeout(timer);
+  }, [syncMode, taskReady, progress, onComplete]);
 
   const stepText = message ?? steps[step];
 
@@ -131,7 +136,7 @@ export default function GenerationOverlay({
 
         <div className="h-1.5 w-64 overflow-hidden rounded-full bg-app-border">
           <div
-            className="h-full rounded-full transition-all duration-300"
+            className="h-full rounded-full transition-all duration-150 ease-linear"
             style={{
               width: `${progress}%`,
               background: "linear-gradient(90deg, #c45c48, #d4a574, #5a8a7a)",
