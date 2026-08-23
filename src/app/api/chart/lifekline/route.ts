@@ -3,7 +3,7 @@ import { generateLifeKlineWithAI, isAIJsonParseError } from "@/lib/llm";
 import { getServerLLMConfig } from "@/lib/server-config";
 import { calculateBazi, formatBaziPrompt } from "@/lib/bazi";
 import { normalizeBirthInfo } from "@/lib/birth-utils";
-import { annotateKlineExtremes } from "@/lib/fortune-chart";
+import { annotateKlineExtremes, generateFullLifeKline } from "@/lib/fortune-chart";
 import type { BirthInfo } from "@/lib/types";
 
 export async function POST(req: NextRequest) {
@@ -12,8 +12,8 @@ export async function POST(req: NextRequest) {
       birthInfo: BirthInfo;
       years: number;
       includeWholeLife?: boolean;
-      /** period=推演年段；fullLife=AI 0-100 岁全览 */
-      scope?: "period" | "fullLife";
+      /** period=推演年段；fullLife=AI 0-100 岁；fullLifeLocal=本地 0-100 岁总览 */
+      scope?: "period" | "fullLife" | "fullLifeLocal";
     };
 
     if (!birthInfo?.year || !birthInfo?.month || !birthInfo?.day) {
@@ -29,6 +29,11 @@ export async function POST(req: NextRequest) {
 
     const normalizedYears = Math.max(1, Math.min(100, Number(years) || 10));
     const fullLifeOnly = scope === "fullLife";
+
+    if (scope === "fullLifeLocal") {
+      const fullKline = annotateKlineExtremes(generateFullLifeKline(normalizedBirthInfo));
+      return NextResponse.json({ fullKline });
+    }
 
     let baziText: string | undefined;
     try {

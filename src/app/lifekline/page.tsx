@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import BirthForm from "@/components/BirthForm";
 import LifeklineChart, { MonthlyLineMini } from "@/components/LifeklineChart";
-import GenerationOverlay from "@/components/GenerationOverlay";
+import GenerationOverlay, { GENERATION_LOADING_STEPS } from "@/components/GenerationOverlay";
 import FortuneLoadingSpinner from "@/components/FortuneLoadingSpinner";
 import PaywallModal from "@/components/PaywallModal";
 import OverallOverviewPanel from "@/components/OverallOverviewPanel";
@@ -74,8 +74,8 @@ export default function LifeklinePage() {
   const [monthlyKline, setMonthlyKline] = useState<KlineData[]>([]);
   const [monthlyLoading, setMonthlyLoading] = useState(false);
   const [periodLoading, setPeriodLoading] = useState(false);
-  const [fullLifeLoading, setFullLifeLoading] = useState(false);
   const [generateReady, setGenerateReady] = useState(false);
+  const [generateSession, setGenerateSession] = useState(0);
   const [cacheVersion, setCacheVersion] = useState(0);
   const periodCacheRef = useRef<Map<number, KlineData[]>>(new Map());
   const monthlyCacheRef = useRef<Map<number, KlineData[]>>(new Map());
@@ -177,7 +177,7 @@ export default function LifeklinePage() {
   const requestLifeKline = useCallback(async (
     info: BirthInfo,
     years: number,
-    options?: { scope?: "period" | "fullLife" },
+    options?: { scope?: "period" | "fullLife" | "fullLifeLocal" },
   ) => {
     const res = await fetch("/api/chart/lifekline", {
       method: "POST",
@@ -196,6 +196,17 @@ export default function LifeklinePage() {
         throw new Error(`${data.error ?? "人生K线生成失败"}（${pos}${detail}）`);
       }
       throw new Error(data.error ?? "人生K线生成失败");
+    }
+
+    if (options?.scope === "fullLifeLocal") {
+      if (!Array.isArray(data.fullKline) || data.fullKline.length < 101) {
+        throw new Error("人生总览返回数据不完整");
+      }
+      return {
+        periodKline: [] as KlineData[],
+        fullKline: data.fullKline as KlineData[],
+        overall: null as unknown as OverallAnalysis,
+      };
     }
 
     if (options?.scope === "fullLife") {
@@ -219,18 +230,15 @@ export default function LifeklinePage() {
     };
   }, []);
 
-  const applyAiFullLife = useCallback((kline: KlineData[]) => {
+  const applyFullLife = useCallback((kline: KlineData[]) => {
     fullLifeLoadedRef.current = true;
     periodCacheRef.current.set(100, kline);
     setFullKline(kline);
     bumpCache();
   }, [bumpCache]);
 
-  const requestAiFullLife = useCallback(async (info: BirthInfo) => {
-    const data = await requestLifeKline(info, 100, { scope: "fullLife" });
-    if (!data.fullKline?.length || data.fullKline.length < 101) {
-      throw new Error("人生总览 AI 返回数据不完整");
-    }
+  const requestLocalFullLife = useCallback(async (info: BirthInfo) => {
+    const data = await requestLifeKline(info, 100, { scope: "fullLifeLocal" });
     return data.fullKline;
   }, [requestLifeKline]);
 
@@ -259,16 +267,14 @@ export default function LifeklinePage() {
     if (years >= 100) {
       if (fullLifeLoadedRef.current || fullKline.length >= 101) return;
       setPeriodLoading(true);
-      setFullLifeLoading(true);
       try {
         setError(null);
-        const kline = await requestAiFullLife(info);
-        applyAiFullLife(kline);
+        const kline = await requestLocalFullLife(info);
+        applyFullLife(kline);
       } catch (err) {
         setError(err instanceof Error ? err.message : "人生K线生成失败，请稍后重试");
       } finally {
         setPeriodLoading(false);
-        setFullLifeLoading(false);
       }
       return;
     }
@@ -293,7 +299,7 @@ export default function LifeklinePage() {
     } finally {
       setPeriodLoading(false);
     }
-  }, [requestLifeKline, requestMonthlyKline, requestAiFullLife, applyAiFullLife, fullKline, bumpCache]);
+  }, [requestLifeKline, requestMonthlyKline, requestLocalFullLife, applyFullLife, fullKline, bumpCache]);
 
   useEffect(() => {
     if (phase !== "generating" || !birthInfo) return;
@@ -307,9 +313,9 @@ export default function LifeklinePage() {
           const [lifeData, monthly, fullKlineData] = await Promise.all([
             requestLifeKline(birthInfo, 1),
             requestMonthlyKline(birthInfo, new Date().getFullYear()),
-            requestAiFullLife(birthInfo),
+            requestLocalFullLife(birthInfo),
           ]);
-          applyAiFullLife(fullKlineData);
+          applyFullLife(fullKlineData);
           const currentYear = new Date().getFullYear();
           monthlyCacheRef.current.set(currentYear, monthly);
           periodCacheRef.current.set(1, monthly);
@@ -321,22 +327,25 @@ export default function LifeklinePage() {
             currentYearMonthly: monthly,
           };
         } else if (years >= 100) {
-          const data = await requestLifeKline(birthInfo, 100, { scope: "fullLife" });
-          applyAiFullLife(data.fullKline);
-          periodCacheRef.current.set(100, data.fullKline);
+          const [lifeData, fullKlineData] = await Promise.all([
+            requestLifeKline(birthInfo, 10),
+            requestLocalFullLife(birthInfo),
+          ]);
+          applyFullLife(fullKlineData);
+          periodCacheRef.current.set(100, fullKlineData);
           bumpCache();
           generateResultRef.current = {
-            periodKline: data.fullKline,
-            fullKline: data.fullKline,
-            overall: data.overall,
+            periodKline: fullKlineData,
+            fullKline: fullKlineData,
+            overall: lifeData.overall,
             currentYearMonthly: [],
           };
         } else {
           const [data, fullKlineData] = await Promise.all([
             requestLifeKline(birthInfo, years),
-            requestAiFullLife(birthInfo),
+            requestLocalFullLife(birthInfo),
           ]);
-          applyAiFullLife(fullKlineData);
+          applyFullLife(fullKlineData);
           periodCacheRef.current.set(years, data.periodKline);
           bumpCache();
           generateResultRef.current = {
@@ -353,7 +362,7 @@ export default function LifeklinePage() {
         setPhase("form");
       }
     })();
-  }, [phase, birthInfo, lifeYears, requestLifeKline, requestMonthlyKline, requestAiFullLife, applyAiFullLife, bumpCache]);
+  }, [phase, birthInfo, lifeYears, requestLifeKline, requestMonthlyKline, requestLocalFullLife, applyFullLife, bumpCache]);
 
   useEffect(() => {
     if (phase !== "result" || !birthInfo || !overall) return;
@@ -392,6 +401,7 @@ export default function LifeklinePage() {
     setCurrentYearMonthly([]);
     bumpCache();
     setBirthInfo(info);
+    setGenerateSession((s) => s + 1);
     setPhase("generating");
   };
 
@@ -485,7 +495,13 @@ export default function LifeklinePage() {
         <PageCarouselBanner slides={PAGE_BANNERS.lifekline} className="!mb-3 !pt-0" />
         <FortuneHubNav active={hubTab} onChange={setHubTab} />
         <div className="relative min-h-[320px]">
-          <GenerationOverlay embedded taskReady={generateReady} onComplete={onGenerateComplete} />
+          <GenerationOverlay
+            embedded
+            taskReady={generateReady}
+            onComplete={onGenerateComplete}
+            steps={GENERATION_LOADING_STEPS}
+            resetKey={generateSession}
+          />
         </div>
       </>
     );
@@ -593,11 +609,6 @@ export default function LifeklinePage() {
 
           {showLifeOverview && (
             <div className="mt-3">
-              {fullLifeLoading && fullKline.length < 101 && (
-                <p className="mb-2 text-center text-xs text-app-accent animate-pulse">
-                  AI 正在生成 0–100 岁人生总览…
-                </p>
-              )}
               <LifeklineChart
                 data={fullKline.length >= 101 ? fullKline : []}
                 viewMode="life"
