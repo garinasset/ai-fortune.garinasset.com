@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
       birthInfo: BirthInfo;
       years: number;
       includeWholeLife?: boolean;
-      /** period=仅推演年段；fullLife=仅 0-100 岁全览（后台加载） */
+      /** period=推演年段；fullLife=AI 0-100 岁全览 */
       scope?: "period" | "fullLife";
     };
 
