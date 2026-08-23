@@ -36,9 +36,12 @@ type ChartRow = KlineData & {
 type ChartOffset = { left: number; right: number; top: number; bottom: number };
 
 function getTopMarkerLabel(entry: KlineData, viewMode: KlineViewMode): string | null {
-  if (entry.isCurrent) return viewMode === "month" ? "今月" : "今年";
   if (entry.isBestYear) return viewMode === "month" ? "大运之月" : "大运之年";
-  if (entry.isWorstYear) return viewMode === "month" ? "大凶之月" : "大凶之年";
+  if (entry.isWorstYear) {
+    if (entry.isCurrent) return viewMode === "month" ? "今月·大凶" : "今年·大凶之年";
+    return viewMode === "month" ? "大凶之月" : "大凶之年";
+  }
+  if (entry.isCurrent) return viewMode === "month" ? "今月" : "今年";
   return null;
 }
 

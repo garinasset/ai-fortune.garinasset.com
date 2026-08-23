@@ -226,7 +226,7 @@ export function generateMonthlyKline(info: BirthInfo, targetYear: number): Kline
   return annotateKlineExtremes(data);
 }
 
-/** 从完整 0–100 岁 K 线截取「当前年起未来 N 年」 */
+/** 从完整 0–100 岁 K 线截取「当前年起未来 N 年」并清除全局极值标记（由图表层重新标注） */
 export function sliceForwardPeriodFromFull(
   fullKline: KlineData[],
   lifeYears: number,
@@ -235,7 +235,10 @@ export function sliceForwardPeriodFromFull(
   const endYear = currentYear + lifeYears - 1;
   return fullKline
     .filter((row) => row.year >= currentYear && row.year <= endYear)
-    .map((row, idx) => ({ ...row, isCurrent: idx === 0 }));
+    .map((row, idx) => {
+      const { isBestYear: _b, isWorstYear: _w, ...rest } = row;
+      return { ...rest, isCurrent: idx === 0 };
+    });
 }
 
 /** 按推演年数生成主图表数据 */

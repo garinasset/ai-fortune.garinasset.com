@@ -237,6 +237,19 @@ export default function LifeklinePage() {
     bumpCache();
   }, [bumpCache]);
 
+  const cachePeriodSlicesFromFull = useCallback((full: KlineData[], activeYears: number) => {
+    periodCacheRef.current.set(100, full);
+    for (const y of [3, 5, 10, 20]) {
+      if (y !== activeYears && y !== 1) {
+        periodCacheRef.current.set(y, sliceForwardPeriodFromFull(full, y));
+      }
+    }
+    if (activeYears !== 1 && activeYears < 100) {
+      periodCacheRef.current.set(activeYears, sliceForwardPeriodFromFull(full, activeYears));
+    }
+    bumpCache();
+  }, [bumpCache]);
+
   const requestLocalFullLife = useCallback(async (info: BirthInfo) => {
     const data = await requestLifeKline(info, 100, { scope: "fullLifeLocal" });
     return data.fullKline;
@@ -271,6 +284,7 @@ export default function LifeklinePage() {
         setError(null);
         const kline = await requestLocalFullLife(info);
         applyFullLife(kline);
+        cachePeriodSlicesFromFull(kline, 100);
       } catch (err) {
         setError(err instanceof Error ? err.message : "人生K线生成失败，请稍后重试");
       } finally {
@@ -283,23 +297,29 @@ export default function LifeklinePage() {
     if (cached?.length) return;
 
     if (fullKline.length >= 101) {
-      periodCacheRef.current.set(years, sliceForwardPeriodFromFull(fullKline, years));
+      if (years >= 100) {
+        periodCacheRef.current.set(100, fullKline);
+      } else if (years !== 1) {
+        periodCacheRef.current.set(years, sliceForwardPeriodFromFull(fullKline, years));
+      }
       bumpCache();
       return;
     }
 
+    if (years === 1 || years >= 100) return;
+
     setPeriodLoading(true);
     try {
       setError(null);
-      const data = await requestLifeKline(info, years);
-      periodCacheRef.current.set(years, data.periodKline);
-      bumpCache();
+      const full = await requestLocalFullLife(info);
+      applyFullLife(full);
+      cachePeriodSlicesFromFull(full, years);
     } catch (err) {
       setError(err instanceof Error ? err.message : "人生K线生成失败，请稍后重试");
     } finally {
       setPeriodLoading(false);
     }
-  }, [requestLifeKline, requestMonthlyKline, requestLocalFullLife, applyFullLife, fullKline, bumpCache]);
+  }, [requestLifeKline, requestMonthlyKline, requestLocalFullLife, applyFullLife, cachePeriodSlicesFromFull, fullKline, bumpCache]);
 
   useEffect(() => {
     if (phase !== "generating" || !birthInfo) return;
@@ -316,6 +336,7 @@ export default function LifeklinePage() {
             requestLocalFullLife(birthInfo),
           ]);
           applyFullLife(fullKlineData);
+          cachePeriodSlicesFromFull(fullKlineData, 1);
           const currentYear = new Date().getFullYear();
           monthlyCacheRef.current.set(currentYear, monthly);
           periodCacheRef.current.set(1, monthly);
@@ -332,8 +353,7 @@ export default function LifeklinePage() {
             requestLocalFullLife(birthInfo),
           ]);
           applyFullLife(fullKlineData);
-          periodCacheRef.current.set(100, fullKlineData);
-          bumpCache();
+          cachePeriodSlicesFromFull(fullKlineData, 100);
           generateResultRef.current = {
             periodKline: fullKlineData,
             fullKline: fullKlineData,
@@ -341,17 +361,17 @@ export default function LifeklinePage() {
             currentYearMonthly: [],
           };
         } else {
-          const [data, fullKlineData] = await Promise.all([
+          const [lifeData, fullKlineData] = await Promise.all([
             requestLifeKline(birthInfo, years),
             requestLocalFullLife(birthInfo),
           ]);
           applyFullLife(fullKlineData);
-          periodCacheRef.current.set(years, data.periodKline);
-          bumpCache();
+          const periodFromFull = sliceForwardPeriodFromFull(fullKlineData, years);
+          cachePeriodSlicesFromFull(fullKlineData, years);
           generateResultRef.current = {
-            periodKline: data.periodKline,
+            periodKline: periodFromFull,
             fullKline: fullKlineData,
-            overall: data.overall,
+            overall: lifeData.overall,
             currentYearMonthly: [],
           };
         }
@@ -362,14 +382,14 @@ export default function LifeklinePage() {
         setPhase("form");
       }
     })();
-  }, [phase, birthInfo, lifeYears, requestLifeKline, requestMonthlyKline, requestLocalFullLife, applyFullLife, bumpCache]);
+  }, [phase, birthInfo, lifeYears, requestLifeKline, requestMonthlyKline, requestLocalFullLife, applyFullLife, cachePeriodSlicesFromFull, bumpCache]);
 
   useEffect(() => {
     if (phase !== "result" || !birthInfo || !overall) return;
     if (!fullKline.length && !currentYearMonthly.length && !periodKline.length) return;
     saveSessionResult("lifekline", {
       birthInfo,
-      fullKline: fullKline.length >= 101 ? fullKline : (periodKline.length ? periodKline : fullKline),
+      fullKline,
       currentYearMonthly,
       drillYear,
       bazi,
