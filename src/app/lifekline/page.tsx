@@ -228,20 +228,11 @@ export default function LifeklinePage() {
 
   const requestAiFullLife = useCallback(async (info: BirthInfo) => {
     const data = await requestLifeKline(info, 100, { scope: "fullLife" });
+    if (!data.fullKline?.length || data.fullKline.length < 101) {
+      throw new Error("人生总览 AI 返回数据不完整");
+    }
     return data.fullKline;
   }, [requestLifeKline]);
-
-  const startAiFullLifeLoad = useCallback((info: BirthInfo) => {
-    if (fullLifeLoadedRef.current) return;
-    setFullLifeLoading(true);
-    void requestAiFullLife(info)
-      .then(applyAiFullLife)
-      .catch((err) => {
-        console.error("AI full life kline failed", err);
-        setError((prev) => prev ?? "人生总览 AI 生成失败，请稍后重试");
-      })
-      .finally(() => setFullLifeLoading(false));
-  }, [requestAiFullLife, applyAiFullLife]);
 
   const loadPeriodForYears = useCallback(async (info: BirthInfo, years: number) => {
     if (years === 1) {
@@ -268,6 +259,7 @@ export default function LifeklinePage() {
     if (years >= 100) {
       if (fullLifeLoadedRef.current || fullKline.length >= 101) return;
       setPeriodLoading(true);
+      setFullLifeLoading(true);
       try {
         setError(null);
         const kline = await requestAiFullLife(info);
@@ -276,6 +268,7 @@ export default function LifeklinePage() {
         setError(err instanceof Error ? err.message : "人生K线生成失败，请稍后重试");
       } finally {
         setPeriodLoading(false);
+        setFullLifeLoading(false);
       }
       return;
     }
@@ -311,18 +304,19 @@ export default function LifeklinePage() {
     (async () => {
       try {
         if (years === 1) {
-          startAiFullLifeLoad(birthInfo);
-          const [lifeData, monthly] = await Promise.all([
+          const [lifeData, monthly, fullKlineData] = await Promise.all([
             requestLifeKline(birthInfo, 1),
             requestMonthlyKline(birthInfo, new Date().getFullYear()),
+            requestAiFullLife(birthInfo),
           ]);
+          applyAiFullLife(fullKlineData);
           const currentYear = new Date().getFullYear();
           monthlyCacheRef.current.set(currentYear, monthly);
           periodCacheRef.current.set(1, monthly);
           bumpCache();
           generateResultRef.current = {
             periodKline: lifeData.periodKline,
-            fullKline: lifeData.periodKline,
+            fullKline: fullKlineData,
             overall: lifeData.overall,
             currentYearMonthly: monthly,
           };
@@ -338,13 +332,16 @@ export default function LifeklinePage() {
             currentYearMonthly: [],
           };
         } else {
-          startAiFullLifeLoad(birthInfo);
-          const data = await requestLifeKline(birthInfo, years);
+          const [data, fullKlineData] = await Promise.all([
+            requestLifeKline(birthInfo, years),
+            requestAiFullLife(birthInfo),
+          ]);
+          applyAiFullLife(fullKlineData);
           periodCacheRef.current.set(years, data.periodKline);
           bumpCache();
           generateResultRef.current = {
             periodKline: data.periodKline,
-            fullKline: data.periodKline,
+            fullKline: fullKlineData,
             overall: data.overall,
             currentYearMonthly: [],
           };
@@ -356,7 +353,7 @@ export default function LifeklinePage() {
         setPhase("form");
       }
     })();
-  }, [phase, birthInfo, lifeYears, requestLifeKline, requestMonthlyKline, startAiFullLifeLoad, applyAiFullLife, bumpCache]);
+  }, [phase, birthInfo, lifeYears, requestLifeKline, requestMonthlyKline, requestAiFullLife, applyAiFullLife, bumpCache]);
 
   useEffect(() => {
     if (phase !== "result" || !birthInfo || !overall) return;
@@ -410,8 +407,8 @@ export default function LifeklinePage() {
     }
 
     setFullKline((prev) => {
-      if (prev.length >= 101) return prev;
       if (pending.fullKline.length >= 101) return pending.fullKline;
+      if (prev.length >= 101) return prev;
       return pending.periodKline;
     });
     setCurrentYearMonthly(pending.currentYearMonthly);

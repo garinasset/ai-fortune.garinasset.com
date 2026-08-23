@@ -7,6 +7,8 @@ const DEFAULT_STEPS = [
   "解析天干地支四柱...",
   "计算流年大运走势...",
   "生成人生 K 线数据...",
+  "AI大模型正在推演...",
+  "AI大数据返回接收...",
   "大师正在深度测算...",
   "推演五行格局能量...",
   "绘制命势可视化图表...",
@@ -60,7 +62,7 @@ export default function GenerationOverlay({
   useEffect(() => {
     if (syncMode) {
       const stepInterval = setInterval(() => {
-        setStep((s) => Math.min(s + 1, steps.length - 1));
+        setStep((s) => (s + 1) % steps.length);
       }, 1100);
 
       const progressInterval = setInterval(() => {
@@ -78,7 +80,7 @@ export default function GenerationOverlay({
     }
 
     const stepInterval = setInterval(() => {
-      setStep((s) => Math.min(s + 1, steps.length - 1));
+      setStep((s) => (s + 1) % steps.length);
     }, duration / steps.length);
 
     const progressInterval = setInterval(() => {
