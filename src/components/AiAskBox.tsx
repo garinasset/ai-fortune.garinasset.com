@@ -55,6 +55,7 @@ export default function AiAskBox({
   const [paywall, setPaywall] = useState(false);
   const [primaryModal, setPrimaryModal] = useState(false);
   const remaining = usePetFoodRemaining();
+  const [answerError, setAnswerError] = useState(false);
 
   useEffect(() => {
     if (birthInfoProp) {
