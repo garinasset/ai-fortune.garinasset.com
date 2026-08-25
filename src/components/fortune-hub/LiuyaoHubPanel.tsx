@@ -17,6 +17,7 @@ import { ensurePrimaryPersonBeforeCalc, getPersonDisplayName } from "@/lib/perso
 import { grantSpiritPowerForTask } from "@/lib/spirit-pet-tasks";
 import { saveSessionResult, loadSessionResult, clearSessionResult } from "@/lib/session-result-cache";
 import { saveBirthInfo } from "@/lib/birth-store";
+import FormattedAnalysisText from "@/components/FormattedAnalysisText";
 import AiDisclaimer from "@/components/AiDisclaimer";
 import { LiuyaoHubDemo } from "@/components/fortune-hub/HubFeatureDemos";
 import type { BirthInfo } from "@/lib/types";
@@ -180,7 +181,7 @@ export default function LiuyaoHubPanel() {
           <AiDisclaimer className="mb-4" />
           <div className="app-card mb-4">
             <h3 className="mb-2 text-sm font-medium">卦象解读</h3>
-            <p className="whitespace-pre-line text-xs leading-relaxed text-app-muted">{result.analysis}</p>
+            <FormattedAnalysisText text={result.analysis} collapsedParagraphs={2} />
             <p className="mt-3 text-xs text-app-gold">💡 {result.advice}</p>
           </div>
           <button onClick={() => { clearSessionResult("liuyao"); setResult(null); setQuestion(""); setBirthInfo(null); }} className="app-btn mb-4 w-full">

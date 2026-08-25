@@ -16,6 +16,7 @@ import { ensurePrimaryPersonBeforeCalc, getPersonDisplayName } from "@/lib/perso
 import { saveSessionResult, loadSessionResult, clearSessionResult } from "@/lib/session-result-cache";
 import type { BirthInfo, BaziResult, AnalysisResult } from "@/lib/types";
 import { BaziHubDemo } from "@/components/fortune-hub/HubFeatureDemos";
+import BaziFlowPanel from "@/components/BaziFlowPanel";
 
 interface BaziSessionState {
   birthInfo: BirthInfo;
@@ -132,6 +133,7 @@ export default function BaziHubPanel() {
           四柱八字 · {getPersonDisplayName(birthInfo)} · {formatPetFoodRemaining(remaining)}
         </p>
         <AnalysisPanel result={analysis} bazi={bazi} />
+        <BaziFlowPanel birthInfo={birthInfo} bazi={bazi} />
         <div className="mt-4 space-y-2">
           <BoostFortuneButton />
           <button

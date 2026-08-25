@@ -14,6 +14,7 @@ import BirthForm from "@/components/BirthForm";
 import { ensurePrimaryPersonBeforeCalc, getPersonDisplayName } from "@/lib/person-store";
 import { grantSpiritPowerForTask } from "@/lib/spirit-pet-tasks";
 import { getSpiritAbilityPrompt } from "@/lib/spirit-pet-ask";
+import TypewriterText from "@/components/TypewriterText";
 import type { BirthInfo, SpiritPetProfile } from "@/lib/types";
 
 const PROMPTS = [
@@ -236,12 +237,18 @@ export default function AiAskBox({
           </p>
         )}
         {answer && !loading && (
-          <div className={`mt-3 rounded-xl p-3 text-xs leading-relaxed ${
+          <div className={`mt-3 rounded-xl p-3 ${
             answerError
               ? "border border-red-400/30 bg-red-500/10 text-red-200"
               : "border border-app-accent/20 bg-app-bg text-app-text"
           }`}>
-            {answer}
+            {answerError ? (
+              <p className="text-xs leading-relaxed">{answer}</p>
+            ) : spiritPetMode ? (
+              <TypewriterText key={answer} text={answer} className="text-xs leading-relaxed text-app-text whitespace-pre-wrap" />
+            ) : (
+              <p className="text-xs leading-relaxed whitespace-pre-wrap">{answer}</p>
+            )}
           </div>
         )}
 

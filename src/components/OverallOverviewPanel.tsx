@@ -2,6 +2,7 @@
 
 import type { OverallAnalysis } from "@/lib/types";
 import { EMPTY_DIMENSIONS } from "@/lib/fortune-chart";
+import FormattedAnalysisText from "@/components/FormattedAnalysisText";
 import BoostFortuneButton from "@/components/BoostFortuneButton";
 
 interface OverallOverviewPanelProps {
@@ -21,9 +22,16 @@ export default function OverallOverviewPanel({ overall, filled = false, showBoos
   return (
     <div className="app-card mt-4">
       <h3 className="mb-3 text-center text-sm font-medium text-app-text">总体命理概览</h3>
-      <p className="mb-5 text-center text-xs leading-relaxed text-app-muted">
-        {filled && overall ? overall.summary : "请输入姓名与出生信息并排盘，测算完成后显示各维度评分。"}
-      </p>
+      {filled && overall ? (
+        <FormattedAnalysisText
+          text={overall.summary}
+          className="mb-5 text-center text-xs leading-relaxed text-app-muted"
+        />
+      ) : (
+        <p className="mb-5 text-center text-xs leading-relaxed text-app-muted">
+          请先填写出生信息并排盘，测算完成后显示各维度评分。
+        </p>
+      )}
 
       {/* 整体命势 — 居中突出 */}
       <div className="mx-auto mb-5 max-w-xs rounded-2xl border-2 border-app-accent/40 bg-app-accent/5 px-5 py-4 text-center">
@@ -37,7 +45,7 @@ export default function OverallOverviewPanel({ overall, filled = false, showBoos
             <div className="h-full rounded-full bg-app-accent" style={{ width: `${overallDim.score}%` }} />
           )}
         </div>
-        <p className="text-[11px] leading-relaxed text-app-muted">{overallDim.text}</p>
+        <FormattedAnalysisText text={overallDim.text} collapsedParagraphs={1} className="text-[11px] leading-relaxed text-app-muted" />
       </div>
 
       {showBoostCta && filled && (
@@ -61,7 +69,7 @@ export default function OverallOverviewPanel({ overall, filled = false, showBoos
                 <div className="h-full rounded-full bg-app-accent" style={{ width: `${d.score}%` }} />
               )}
             </div>
-            <p className="text-[10px] leading-relaxed text-app-muted">{d.text}</p>
+            <FormattedAnalysisText text={d.text} collapsedParagraphs={1} className="text-[10px] leading-relaxed text-app-muted" />
           </div>
         ))}
       </div>

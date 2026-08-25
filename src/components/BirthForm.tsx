@@ -22,6 +22,7 @@ interface BirthFormProps {
   onValuesChange?: (info: BirthInfo) => void;
   hideSubmit?: boolean;
   hideName?: boolean;
+  requireName?: boolean;
   formId?: string;
 }
 
@@ -41,10 +42,12 @@ export default function BirthForm({
   onValuesChange,
   hideSubmit,
   hideName,
+  requireName,
   formId,
 }: BirthFormProps) {
   const now = new Date();
   const [name, setName] = useState("");
+  const [nameError, setNameError] = useState<string | null>(null);
   const [year, setYear] = useState(1990);
   const [month, setMonth] = useState(5);
   const [day, setDay] = useState(15);
@@ -102,6 +105,11 @@ export default function BirthForm({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (requireName && !name.trim()) {
+      setNameError("请填写姓名");
+      return;
+    }
+    setNameError(null);
     const info = saveBirthInfo(buildInfo());
     if (syncActivePerson) {
       const activeId = getActivePersonId();
@@ -151,8 +159,9 @@ export default function BirthForm({
       {!compact && !hideName && (
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <label className={fieldLabel}>姓名（选填）</label>
-            <input className={fieldInput} value={name} onChange={(e) => setName(e.target.value)} placeholder="请输入" />
+            <label className={fieldLabel}>{requireName ? "姓名（必填）" : "姓名（选填）"}</label>
+            <input className={fieldInput} value={name} onChange={(e) => { setName(e.target.value); setNameError(null); }} placeholder={requireName ? "请输入您的姓名" : "请输入"} required={requireName} />
+            {nameError && <p className="mt-0.5 text-[10px] text-red-400">{nameError}</p>}
           </div>
           <div>
             <label className={fieldLabel}>性别</label>
@@ -180,8 +189,9 @@ export default function BirthForm({
             </div>
           </div>
           <div>
-            <label className={fieldLabel}>姓名（选填）</label>
-            <input className={fieldInput} value={name} onChange={(e) => setName(e.target.value)} placeholder="请输入" />
+            <label className={fieldLabel}>{requireName ? "姓名（必填）" : "姓名（选填）"}</label>
+            <input className={fieldInput} value={name} onChange={(e) => { setName(e.target.value); setNameError(null); }} placeholder={requireName ? "请输入您的姓名" : "请输入"} required={requireName} />
+            {nameError && <p className="mt-0.5 text-[10px] text-red-400">{nameError}</p>}
           </div>
         </div>
       )}

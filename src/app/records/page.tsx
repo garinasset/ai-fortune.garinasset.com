@@ -123,7 +123,7 @@ export default function RecordsPage() {
         {(showPrimaryForm || !primary) && (
           <div className="app-card mt-3 border-app-gold/30">
             <p className="mb-2 text-xs font-medium text-app-gold">主测算人 · {PRIMARY_PERSON_NAME} 的生辰</p>
-            <BirthForm onSubmit={handleAddPrimary} submitLabel={primary ? "保存主测算人" : "添加主测算人"} compact syncActivePerson={false} />
+            <BirthForm onSubmit={handleAddPrimary} submitLabel={primary ? "保存主测算人" : "添加主测算人"} compact syncActivePerson={false} requireName />
             {primary && (
               <button onClick={() => setShowPrimaryForm(false)} className="mt-2 w-full text-[10px] text-app-muted">取消编辑</button>
             )}

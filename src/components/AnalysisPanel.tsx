@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
+import FormattedAnalysisText from "@/components/FormattedAnalysisText";
 import AiDisclaimer from "@/components/AiDisclaimer";
 import type { AnalysisResult, BaziResult, AnalysisCategory } from "@/lib/types";
 
@@ -55,7 +56,7 @@ export default function AnalysisPanel({ result, bazi }: AnalysisPanelProps) {
         <>
           <div className="app-card">
             <h3 className="mb-2 text-sm font-medium text-app-text">综合概述</h3>
-            <p className="text-xs leading-relaxed text-app-muted">{result.summary}</p>
+            <FormattedAnalysisText text={result.summary} />
           </div>
           <AiDisclaimer />
         </>
@@ -64,7 +65,7 @@ export default function AnalysisPanel({ result, bazi }: AnalysisPanelProps) {
       {bazi && (
         <div className="app-card">
           <h3 className="mb-2 text-sm font-medium text-app-text">综合概述</h3>
-          <p className="text-xs leading-relaxed text-app-muted">{result.summary}</p>
+          <FormattedAnalysisText text={result.summary} />
         </div>
       )}
 
@@ -81,7 +82,7 @@ export default function AnalysisPanel({ result, bazi }: AnalysisPanelProps) {
             </button>
             {expanded === key && result.categories[key] && (
               <div className="border-t border-app-border px-4 pb-3 pt-2">
-                <p className="text-xs leading-relaxed text-app-muted">{result.categories[key]}</p>
+                <FormattedAnalysisText text={result.categories[key]!} collapsedParagraphs={1} expandLabel="查看完整分析" />
               </div>
             )}
           </div>

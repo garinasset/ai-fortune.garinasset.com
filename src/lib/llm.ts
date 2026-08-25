@@ -100,19 +100,19 @@ ${mayiNote}请根据用户提供的信息，给出专业、详尽且积极正面
 
 必须严格以 JSON（json）格式返回，不要包含任何 markdown 代码块或其他文字：
 {
-  "summary": "200字以内的总体概述",
+  "summary": "250-350字的总体概述，分2-4个自然段，段与段之间用\\n\\n分隔，每段3-5句，内容具体、有命理依据",
   "categories": {
-    "wealth": "财运分析，80-150字",
-    "love": "爱情分析，80-150字",
-    "personality": "性格分析，80-150字",
-    "friends": "朋友人际分析，80-150字",
-    "children": "子女分析，80-150字",
-    "family": "家庭分析，80-150字",
-    "career": "事业分析，80-150字"
+    "wealth": "财运分析，120-200字，分2-3段，段间用\\n\\n分隔",
+    "love": "爱情分析，120-200字，分2-3段，段间用\\n\\n分隔",
+    "personality": "性格分析，120-200字，分2-3段，段间用\\n\\n分隔",
+    "friends": "朋友人际分析，120-200字，分2-3段，段间用\\n\\n分隔",
+    "children": "子女分析，120-200字，分2-3段，段间用\\n\\n分隔",
+    "family": "家庭分析，120-200字，分2-3段，段间用\\n\\n分隔",
+    "career": "事业分析，120-200字，分2-3段，段间用\\n\\n分隔"
   }
 }
 
-注意：分析要有命理依据，语言通俗易懂，给出具体建议。`;
+注意：分析要有命理依据，语言通俗易懂，给出具体建议；各字段内用换行分段，便于阅读。`;
 }
 
 function parseAnalysisResponse(content: string): AnalysisResult {
@@ -196,7 +196,7 @@ async function analyzeWithLLM(
       { role: "user", content: userPrompt },
     ],
     temperature: 0.7,
-    max_tokens: 2000,
+    max_tokens: 4096,
   };
 
   // DeepSeek JSON Output: https://api-docs.deepseek.com/zh-cn/guides/json_mode
@@ -234,7 +234,7 @@ async function analyzeWithLLM(
 }
 
 export function buildBaziPrompt(baziText: string): string {
-  return `请根据以下八字信息进行详细命理分析：\n\n${baziText}`;
+  return `请根据以下八字信息进行详细命理分析，综合概述与各分类都要写得充分、分段清晰：\n\n${baziText}`;
 }
 
 export function buildImagePrompt(type: "palm" | "face", description: string): string {
@@ -483,7 +483,7 @@ async function generateLifeKlineFromLLM(
     full = await completeJson<LifeKlineAiResult>(
       llmConfig,
       "你是一名命理数据分析师。请严格输出 json（json_object），不要输出额外文本。",
-      `请根据下列用户信息，生成“人生K线 0-100岁”的结构化数据。\n用户信息：${birthText}${baziNote}\n要求：\n1) kline 必须按年龄从 0 到 100（共 101 项，连续、升序、不得缺失），且 year=出生年+age。\n2) 每项仅包含 year, age, open, close, high, low（不要 ganZhi，不要多余字段）。\n3) 所有数值范围 1-100，且满足 high >= max(open, close), low <= min(open, close)。\n4) K线风格需接近股票市场：不同人生阶段有趋势切换与波动，不允许 10 年以上明显单边；任意连续同向K线不超过 4 根。\n5) 邻近年龄变化要平滑，避免不合理断崖跳变（通常 |close-open| <= 15，且相邻 close 差值通常 <= 18）。\n6) 生成 summary（100-220字）和 dimensions（11个维度，key/label/score/text）。\n7) dimensions 的 key 使用：overall,career,wealth,marriage,noble,health,safety,family,love,personality,fengshui。\n8) 输出紧凑 json，不要换行注释，不要多余字段。\n返回格式示例：{\"summary\":\"...\",\"kline\":[{\"year\":1998,\"age\":0,\"open\":50,\"close\":52,\"high\":55,\"low\":46}],\"dimensions\":[{\"key\":\"overall\",\"label\":\"整体命势\",\"score\":72,\"text\":\"...\"}]}`,
+      `请根据下列用户信息，生成“人生K线 0-100岁”的结构化数据。\n用户信息：${birthText}${baziNote}\n要求：\n1) kline 必须按年龄从 0 到 100（共 101 项，连续、升序、不得缺失），且 year=出生年+age。\n2) 每项仅包含 year, age, open, close, high, low（不要 ganZhi，不要多余字段）。\n3) 所有数值范围 1-100，且满足 high >= max(open, close), low <= min(open, close)。\n4) K线风格需接近股票市场：不同人生阶段有趋势切换与波动，不允许 10 年以上明显单边；任意连续同向K线不超过 4 根。\n5) 邻近年龄变化要平滑，避免不合理断崖跳变（通常 |close-open| <= 15，且相邻 close 差值通常 <= 18）。\n6) 生成 summary（250-350字，分2-4段，段间用\\n\\n分隔）和 dimensions（11个维度，key/label/score/text，每项 text 80-120字，可分2段用\\n\\n分隔）。\n7) dimensions 的 key 使用：overall,career,wealth,marriage,noble,health,safety,family,love,personality,fengshui。\n8) 输出紧凑 json，不要换行注释，不要多余字段。\n返回格式示例：{\"summary\":\"...\",\"kline\":[{\"year\":1998,\"age\":0,\"open\":50,\"close\":52,\"high\":55,\"low\":46}],\"dimensions\":[{\"key\":\"overall\",\"label\":\"整体命势\",\"score\":72,\"text\":\"...\"}]}`,
       { maxTokens: 16384, temperature: 0.35 },
     );
     period = { summary: full.summary ?? "", kline: [], dimensions: full.dimensions ?? [] };
@@ -491,7 +491,7 @@ async function generateLifeKlineFromLLM(
     period = await completeJson<LifeKlineAiResult>(
     llmConfig,
     "你是一名命理数据分析师。请严格输出 json（json_object），不要输出额外文本。",
-    `请根据下列用户信息，生成“人生K线”的结构化数据。\n用户信息：${birthText}${baziNote}\n当前年份：${currentYear}，当前年龄约：${currentAge}。\n要求：\n1) 生成未来 ${requestYears} 年的年K线（从当前年份开始，必须连续、升序、不得缺年）。\n2) kline 为数组，每项包含 year, age, open, close, high, low，可选 ganZhi。\n3) 必须满足 age = year - 出生年。\n4) 所有数值范围 1-100，且满足 high >= max(open, close), low <= min(open, close)。\n5) K线风格需接近股票市场：存在上升段、回撤段、震荡段，不允许长期单边；任意连续同向K线不超过 4 根。\n6) 邻近年份变化要平滑，避免不合理断崖跳变（通常 |close-open| <= 15，且相邻 close 差值通常 <= 18）。\n7) 生成 summary（100-220字）和 dimensions（11个维度，key/label/score/text）。\n8) dimensions 的 key 使用：overall,career,wealth,marriage,noble,health,safety,family,love,personality,fengshui。\n9) 输出紧凑 json，不要换行注释，不要多余字段。\n返回格式示例：{\"summary\":\"...\",\"kline\":[{\"year\":2026,\"age\":28,\"open\":62,\"close\":68,\"high\":72,\"low\":58}],\"dimensions\":[{\"key\":\"overall\",\"label\":\"整体命势\",\"score\":72,\"text\":\"...\"}]}`,
+    `请根据下列用户信息，生成“人生K线”的结构化数据。\n用户信息：${birthText}${baziNote}\n当前年份：${currentYear}，当前年龄约：${currentAge}。\n要求：\n1) 生成未来 ${requestYears} 年的年K线（从当前年份开始，必须连续、升序、不得缺年）。\n2) kline 为数组，每项包含 year, age, open, close, high, low，可选 ganZhi。\n3) 必须满足 age = year - 出生年。\n4) 所有数值范围 1-100，且满足 high >= max(open, close), low <= min(open, close)。\n5) K线风格需接近股票市场：存在上升段、回撤段、震荡段，不允许长期单边；任意连续同向K线不超过 4 根。\n6) 邻近年份变化要平滑，避免不合理断崖跳变（通常 |close-open| <= 15，且相邻 close 差值通常 <= 18）。\n7) 生成 summary（250-350字，分2-4段，段间用\\n\\n分隔）和 dimensions（11个维度，key/label/score/text，每项 text 80-120字，可分2段用\\n\\n分隔）。\n8) dimensions 的 key 使用：overall,career,wealth,marriage,noble,health,safety,family,love,personality,fengshui。\n9) 输出紧凑 json，不要换行注释，不要多余字段。\n返回格式示例：{\"summary\":\"...\",\"kline\":[{\"year\":2026,\"age\":28,\"open\":62,\"close\":68,\"high\":72,\"low\":58}],\"dimensions\":[{\"key\":\"overall\",\"label\":\"整体命势\",\"score\":72,\"text\":\"...\"}]}`,
     { maxTokens: 8000, temperature: 0.4 },
   );
 
@@ -499,7 +499,7 @@ async function generateLifeKlineFromLLM(
       full = await completeJson<LifeKlineAiResult>(
       llmConfig,
       "你是一名命理数据分析师。请严格输出 json（json_object），不要输出额外文本。",
-      `请根据下列用户信息，生成“人生K线 0-100岁”的结构化数据。\n用户信息：${birthText}${baziNote}\n要求：\n1) kline 必须按年龄从 0 到 100（共 101 项，连续、升序、不得缺失），且 year=出生年+age。\n2) 每项仅包含 year, age, open, close, high, low（不要 ganZhi，不要多余字段）。\n3) 所有数值范围 1-100，且满足 high >= max(open, close), low <= min(open, close)。\n4) K线风格需接近股票市场：不同人生阶段有趋势切换与波动，不允许 10 年以上明显单边；任意连续同向K线不超过 4 根。\n5) 邻近年龄变化要平滑，避免不合理断崖跳变（通常 |close-open| <= 15，且相邻 close 差值通常 <= 18）。\n6) 生成 summary（100-220字）和 dimensions（11个维度，key/label/score/text）。\n7) dimensions 的 key 使用：overall,career,wealth,marriage,noble,health,safety,family,love,personality,fengshui。\n8) 输出紧凑 json，不要换行注释，不要多余字段。\n返回格式示例：{\"summary\":\"...\",\"kline\":[{\"year\":1998,\"age\":0,\"open\":50,\"close\":52,\"high\":55,\"low\":46}],\"dimensions\":[{\"key\":\"overall\",\"label\":\"整体命势\",\"score\":72,\"text\":\"...\"}]}`,
+      `请根据下列用户信息，生成“人生K线 0-100岁”的结构化数据。\n用户信息：${birthText}${baziNote}\n要求：\n1) kline 必须按年龄从 0 到 100（共 101 项，连续、升序、不得缺失），且 year=出生年+age。\n2) 每项仅包含 year, age, open, close, high, low（不要 ganZhi，不要多余字段）。\n3) 所有数值范围 1-100，且满足 high >= max(open, close), low <= min(open, close)。\n4) K线风格需接近股票市场：不同人生阶段有趋势切换与波动，不允许 10 年以上明显单边；任意连续同向K线不超过 4 根。\n5) 邻近年龄变化要平滑，避免不合理断崖跳变（通常 |close-open| <= 15，且相邻 close 差值通常 <= 18）。\n6) 生成 summary（250-350字，分2-4段，段间用\\n\\n分隔）和 dimensions（11个维度，key/label/score/text，每项 text 80-120字，可分2段用\\n\\n分隔）。\n7) dimensions 的 key 使用：overall,career,wealth,marriage,noble,health,safety,family,love,personality,fengshui。\n8) 输出紧凑 json，不要换行注释，不要多余字段。\n返回格式示例：{\"summary\":\"...\",\"kline\":[{\"year\":1998,\"age\":0,\"open\":50,\"close\":52,\"high\":55,\"low\":46}],\"dimensions\":[{\"key\":\"overall\",\"label\":\"整体命势\",\"score\":72,\"text\":\"...\"}]}`,
       { maxTokens: 16384, temperature: 0.35 },
     );
     }
@@ -803,7 +803,7 @@ export async function askSpiritPet(
 
   const answer = await completeJson<{ answer: string }>(
     requireLLMConfig(config),
-    `你是一位温暖、克制且具体的命理顾问与灵宠陪伴者。\n请严格输出 json。\n返回格式：{"answer":"..."}。\nanswer 要求：1) 80-180 字；2) 给出可执行建议；3) 不夸大承诺；4) 中文输出。`,
+    `你是一位温暖、克制且具体的命理顾问与灵宠陪伴者。\n请严格输出 json。\n返回格式：{"answer":"..."}。\nanswer 要求：1) 80-180 字；2) 分2-4行，行与行之间用\\n分隔；3) 给出可执行建议；4) 不夸大承诺；5) 中文输出。`,
     `用户：${params.personName ?? "用户"}\n灵宠：${petTitle}\n生辰信息：${userContext}\n问题：${params.question}`,
   );
 
@@ -838,7 +838,7 @@ export async function analyzeLiuyaoWithAI(
 
   const result = await completeJson<LiuyaoAiResult>(
     requireLLMConfig(config),
-    `你是精通周易六爻的专业命理师。\n请严格输出 json，格式：{"analysis":"...","advice":"...","luck":"大吉|吉|平|凶|大凶"}。\nanalysis 控制在 120-260 字，advice 控制在 30-80 字，输出中文。结合问卦者生辰与卦象综合断事。`,
+    `你是精通周易六爻的专业命理师。\n请严格输出 json，格式：{"analysis":"...","advice":"..."}。\nanalysis 220-350字，分2-4段，段间用\\n\\n分隔，结合卦象与问卦者生辰详细断事；advice 50-100字，给出可执行建议；luck 为 大吉|吉|平|凶|大凶 之一；输出中文。`,
     `问卦者：${birthText}${baziNote}\n问题：${params.question}\n本卦：${params.guaName}卦\n卦辞：${params.guaDesc}\n六爻：${params.linesText}`,
   );
 
@@ -847,6 +847,46 @@ export async function analyzeLiuyaoWithAI(
   }
 
   return result;
+}
+
+export async function analyzeBaziFlow(
+  config: LLMConfig | undefined,
+  params: {
+    scope: "liunian" | "liuyue";
+    baziText: string;
+    year: number;
+    month?: number;
+    ganZhi: string;
+    dayun?: string;
+    age?: number;
+  },
+): Promise<{ analysis: string; mock: boolean }> {
+  const scopeLabel = params.scope === "liunian" ? "流年" : "流月";
+  const period =
+    params.scope === "liunian"
+      ? `${params.year}年（流年干支 ${params.ganZhi}，虚岁约 ${params.age ?? "—"} 岁，所属大运 ${params.dayun ?? "未知"}）`
+      : `${params.year}年 ${params.month} 月（流月干支 ${params.ganZhi}）`;
+
+  if (isMockMode(config)) {
+    await simulateAnalysisDelay();
+    const head = params.scope === "liunian" ? `${params.year} 流年` : `${params.year}年${params.month}月 流月`;
+    return {
+      analysis: `${head}(${params.ganZhi}) 运势概览：\n\n整体气场平稳，宜以守正蓄力为主，不宜盲目扩张。\n\n事业与财运方面可小步尝试，注重细节与合规；感情与人际宜多沟通、少争执；健康与作息需规律，秋冬注意保养。`,
+      mock: true,
+    };
+  }
+
+  const result = await completeJson<{ analysis: string }>(
+    requireLLMConfig(config),
+    `你是精通子平八字的命理师。请严格输出 json：{"analysis":"..."}。\nanalysis 要求 180-280 字，分 2-4 段，段间用 \\n\\n 分隔；结合四柱、大运与${scopeLabel}干支，分析吉凶趋势并给出具体建议。`,
+    `【八字命盘】\n${params.baziText}\n\n请详述${scopeLabel}运势：\n${period}`,
+    { maxTokens: 1200, temperature: 0.65 },
+  );
+
+  if (!result?.analysis?.trim()) {
+    throw new Error("AI 返回内容不完整");
+  }
+  return { analysis: result.analysis.trim(), mock: false };
 }
 
 async function completeJson<T>(

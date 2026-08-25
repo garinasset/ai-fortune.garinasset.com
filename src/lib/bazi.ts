@@ -114,6 +114,7 @@ export function calculateBazi(info: BirthInfo): BaziResult {
 export function formatBaziPrompt(bazi: BaziResult): string {
   return `
 八字信息：
+${bazi.name ? `- 姓名：${bazi.name}` : ""}
 - 性别：${bazi.gender}
 - 阳历：${bazi.solarDate}
 - 农历：${bazi.lunarDate}
@@ -126,4 +127,12 @@ export function formatBaziPrompt(bazi: BaziResult): string {
   })?.ganZhi ?? "未知"}
 - 未来流年：${bazi.liunian.slice(0, 10).map((l) => `${l.year}(${l.ganZhi})`).join("、")}
 `.trim();
+}
+
+/** 指定公历月份的流月干支（参考节令月柱） */
+export function getLiuyueGanZhi(year: number, month: number): string {
+  const solar = Solar.fromYmdHms(year, month, 15, 12, 0, 0);
+  const lunar = solar.getLunar();
+  const ec = lunar.getEightChar();
+  return ec.getMonthGan() + ec.getMonthZhi();
 }

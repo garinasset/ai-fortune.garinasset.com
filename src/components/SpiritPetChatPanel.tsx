@@ -13,6 +13,7 @@ import PrimaryPersonModal from "@/components/PrimaryPersonModal";
 import { ensurePrimaryPersonBeforeCalc, getPersonDisplayName } from "@/lib/person-store";
 import { grantSpiritPowerForTask } from "@/lib/spirit-pet-tasks";
 import { getSpiritAbilityPrompt } from "@/lib/spirit-pet-ask";
+import TypewriterText from "@/components/TypewriterText";
 import SpiritPetDisplay from "@/components/SpiritPetDisplay";
 import SpiritPetMediaAvatar from "@/components/SpiritPetMediaAvatar";
 import type { BirthInfo, SpiritPetProfile } from "@/lib/types";
@@ -21,6 +22,8 @@ interface ChatMessage {
   id: string;
   role: "user" | "pet";
   text: string;
+  /** 灵宠回复打字机效果 */
+  animate?: boolean;
 }
 
 export const SPIRIT_PET_CHAT_PROMPTS = [
@@ -154,7 +157,7 @@ export default function SpiritPetChatPanel({
         return;
       }
 
-      setMessages((prev) => [...prev, { id: `p-${Date.now()}`, role: "pet", text: ans }]);
+      setMessages((prev) => [...prev, { id: `p-${Date.now()}`, role: "pet", text: ans, animate: true }]);
       incrementUsage("aiAsk");
       addHistory({ type: "aiAsk", title: q.slice(0, 30), data: { q, ans, birthInfo } });
       const personName = getPersonDisplayName(birthInfo, user?.nickname || ownerName);
@@ -233,7 +236,13 @@ export default function SpiritPetChatPanel({
                       : "rounded-bl-md border border-app-border bg-app-bg text-app-text"
                   }`}
                 >
-                  {m.text}
+                  {mine ? (
+                    <p className="whitespace-pre-wrap">{m.text}</p>
+                  ) : m.animate ? (
+                    <TypewriterText text={m.text} className="text-xs leading-relaxed text-app-text whitespace-pre-wrap" />
+                  ) : (
+                    <p className="whitespace-pre-wrap">{m.text}</p>
+                  )}
                 </div>
               </div>
             );
