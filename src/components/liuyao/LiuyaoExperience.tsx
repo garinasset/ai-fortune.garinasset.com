@@ -223,11 +223,12 @@ export default function LiuyaoExperience({ embedded }: LiuyaoExperienceProps) {
           <AiDisclaimer className="mb-4" />
 
           <div className="app-card mb-4">
-            <h3 className="mb-3 text-sm font-semibold text-app-text">AI大模型解卦</h3>
-            <FormattedAnalysisText text={result.analysis} collapsedParagraphs={0} label="解卦正文" />
+            <h3 className="mb-3 text-sm font-semibold text-app-gold">AI大模型解卦</h3>
+            <FormattedAnalysisText text={result.analysis} collapsedParagraphs={0} showLabel={false} />
             {result.advice && (
-              <div className="mt-3">
-                <FormattedAnalysisText text={`💡 ${result.advice}`} collapsedParagraphs={0} label="行动建议" />
+              <div className="mt-4">
+                <h3 className="mb-3 text-sm font-semibold text-app-gold">行动建议</h3>
+                <FormattedAnalysisText text={`💡 ${result.advice}`} collapsedParagraphs={0} showLabel={false} />
               </div>
             )}
           </div>

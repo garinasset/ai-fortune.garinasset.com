@@ -105,12 +105,15 @@ export const DEMO_LIUYAO = {
   advice: "整体向好，稳中求进，不可急躁。",
   lines: [
     { isYang: true, label: "少阳" },
-    { isYang: true, label: "老阳" },
+    { isYang: true, label: "少阳" },
     { isYang: true, label: "少阳" },
     { isYang: false, label: "少阴" },
-    { isYang: true, label: "少阳" },
-    { isYang: true, label: "少阳" },
+    { isYang: false, label: "少阴" },
+    { isYang: false, label: "少阴" },
   ],
+  lowerTrigram: "乾",
+  upperTrigram: "坤",
+  trigramLabel: "天地",
 };
 
 export const DEMO_REPORT = {

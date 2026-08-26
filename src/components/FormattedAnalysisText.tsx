@@ -24,6 +24,8 @@ interface FormattedAnalysisTextProps {
   compact?: boolean;
   /** 顶部标签 */
   label?: string;
+  /** 是否显示顶部标签栏中的标题 */
+  showLabel?: boolean;
 }
 
 function HighlightedLine({ text }: { text: string }) {
@@ -104,6 +106,7 @@ export default function FormattedAnalysisText({
   copyable = true,
   compact = false,
   label = "解读",
+  showLabel = true,
 }: FormattedAnalysisTextProps) {
   const paragraphs = useMemo(() => splitAnalysisParagraphs(text), [text]);
   const [expanded, setExpanded] = useState(false);
@@ -121,10 +124,20 @@ export default function FormattedAnalysisText({
 
   return (
     <div className={`rounded-xl border border-app-border/80 bg-app-bg/50 ${compact ? "px-3 py-2.5" : "px-3.5 py-3.5"} ${className}`}>
-      <div className="mb-3 flex items-center justify-between gap-2 border-b border-app-border/50 pb-2.5">
-        <span className="text-xs font-semibold text-app-gold">{label}</span>
-        {copyable && <AnalysisCopyButton text={copyText} />}
-      </div>
+      {copyable && (
+        <div className={`${showLabel && label ? "mb-3 flex items-center justify-between gap-2 border-b border-app-border/50 pb-2.5" : "mb-2 flex justify-end"}`}>
+          {showLabel && label ? (
+            <span className="text-xs font-semibold text-app-gold">{label}</span>
+          ) : null}
+          <AnalysisCopyButton text={copyText} />
+        </div>
+      )}
+
+      {!copyable && showLabel && label ? (
+        <div className="mb-3 border-b border-app-border/50 pb-2.5">
+          <span className="text-xs font-semibold text-app-gold">{label}</span>
+        </div>
+      ) : null}
 
       <div className="space-y-3">
         {segments.map((segment, i) => (

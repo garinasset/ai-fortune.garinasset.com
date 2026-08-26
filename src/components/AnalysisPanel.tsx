@@ -33,7 +33,7 @@ export default function AnalysisPanel({ result, bazi }: AnalysisPanelProps) {
       {bazi ? (
         <>
           <div className="app-card">
-            <h3 className="mb-3 text-center text-sm font-medium text-app-text">八字排盘</h3>
+            <h3 className="mb-3 text-center text-sm font-medium text-app-gold">八字排盘</h3>
             <div className="grid grid-cols-4 gap-2 text-center">
               {(["year", "month", "day", "hour"] as const).map((key) => (
                 <div key={key} className="rounded-xl bg-app-bg py-2">
@@ -55,8 +55,8 @@ export default function AnalysisPanel({ result, bazi }: AnalysisPanelProps) {
       ) : (
         <>
           <div className="app-card">
-            <h3 className="mb-3 text-sm font-semibold text-app-text">综合概述</h3>
-            <FormattedAnalysisText text={result.summary} collapsedParagraphs={3} label="综合概述" />
+            <h3 className="mb-3 text-sm font-semibold text-app-gold">综合概述</h3>
+            <FormattedAnalysisText text={result.summary} collapsedParagraphs={3} showLabel={false} />
           </div>
           <AiDisclaimer />
         </>
@@ -64,8 +64,8 @@ export default function AnalysisPanel({ result, bazi }: AnalysisPanelProps) {
 
       {bazi && (
         <div className="app-card">
-          <h3 className="mb-3 text-sm font-semibold text-app-text">综合概述</h3>
-          <FormattedAnalysisText text={result.summary} collapsedParagraphs={3} label="综合概述" />
+          <h3 className="mb-3 text-sm font-semibold text-app-gold">综合概述</h3>
+          <FormattedAnalysisText text={result.summary} collapsedParagraphs={3} showLabel={false} />
         </div>
       )}
 
@@ -76,13 +76,13 @@ export default function AnalysisPanel({ result, bazi }: AnalysisPanelProps) {
               onClick={() => setExpanded(expanded === key ? null : key)}>
               <span className="flex items-center gap-2 text-sm">
                 <span>{icon}</span>
-                <span className="font-semibold text-app-text">{label}</span>
+                <span className="font-semibold text-app-gold">{label}</span>
               </span>
               {expanded === key ? <ChevronUp className="h-4 w-4 text-app-muted" /> : <ChevronDown className="h-4 w-4 text-app-muted" />}
             </button>
             {expanded === key && result.categories[key] && (
               <div className="border-t border-app-border px-4 pb-4 pt-3">
-                <FormattedAnalysisText text={result.categories[key]!} collapsedParagraphs={2} expandLabel="查看完整分析" label={`${label}解读`} />
+                <FormattedAnalysisText text={result.categories[key]!} collapsedParagraphs={2} expandLabel="查看完整分析" showLabel={false} />
               </div>
             )}
           </div>

@@ -162,8 +162,11 @@ export default function BaziFlowPanel({ birthInfo, bazi }: BaziFlowPanelProps) {
 
       {analysis && !loading && (
         <div className="mt-3">
-          {meta && <p className="mb-2 text-xs font-semibold text-app-accent">{meta}</p>}
-          <FormattedAnalysisText text={analysis} collapsedParagraphs={0} label="流年流月解读" />
+          <h3 className="mb-2 text-sm font-semibold text-app-gold">
+            {tab === "liunian" ? "流年解读" : "流月解读"}
+          </h3>
+          {meta && <p className="mb-2 text-xs text-app-muted">{meta}</p>}
+          <FormattedAnalysisText text={analysis} collapsedParagraphs={0} showLabel={false} />
         </div>
       )}
     </div>

@@ -14,6 +14,12 @@ export default function LiuyaoDemoCard() {
       </div>
 
       <div className="mb-2 text-center">
+        {(DEMO_LIUYAO.upperTrigram && DEMO_LIUYAO.lowerTrigram) && (
+          <p className="mb-1 text-[10px] text-app-muted">
+            上{DEMO_LIUYAO.upperTrigram} · 下{DEMO_LIUYAO.lowerTrigram}
+            {DEMO_LIUYAO.trigramLabel ? `（${DEMO_LIUYAO.trigramLabel}）` : ""}
+          </p>
+        )}
         <p className="text-base font-bold text-app-gold sm:text-lg">
           {DEMO_LIUYAO.guaName}卦
           <span className="mx-1.5 font-normal text-app-gold/60">·</span>
