@@ -9,7 +9,7 @@ export function splitAnalysisParagraphs(text: string): string[] {
   const sentences: string[] = [];
   for (const chunk of chunks) {
     const parts = chunk
-      .split(/(?<=[。！？；])+/u)
+      .split(/(?<=[。！？；])\s*/u)
       .map((s) => s.trim())
       .filter(Boolean);
     if (parts.length > 0) sentences.push(...parts);
