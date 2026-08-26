@@ -220,7 +220,7 @@ export default function LiuyaoExperience({ embedded }: LiuyaoExperienceProps) {
           <AiDisclaimer className="mb-4" />
 
           <div className="app-card mb-4">
-            <h3 className="mb-2 text-sm font-medium">卦象解读</h3>
+            <h3 className="mb-2 text-sm font-medium">AI大模型解卦</h3>
             <FormattedAnalysisText text={result.analysis} collapsedParagraphs={2} />
             <p className="mt-3 text-xs text-app-gold">💡 {result.advice}</p>
           </div>

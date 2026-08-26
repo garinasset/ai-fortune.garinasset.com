@@ -166,7 +166,7 @@ export default function LiuyaoCoinCast({ question, onRequestAnalysis, disabled }
                 onClick={() => onRequestAnalysis(lines)}
                 className="app-btn !mb-0 inline-flex min-w-[10rem] items-center justify-center gap-2 px-6 py-3.5"
               >
-                卦象解读
+                AI大模型解卦
               </button>
             </div>
           </>

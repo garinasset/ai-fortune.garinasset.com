@@ -21,7 +21,11 @@ export default function ReportPosterButton({ data, label = "生成报告海报",
   const [preview, setPreview] = useState<string | null>(null);
   const [style, setStyle] = useState<PosterStyle>("classic");
 
-  const buildData = (): PosterData => ({ ...data, userName: user?.nickname });
+  const buildData = (): PosterData => ({
+    ...data,
+    userName: user?.nickname,
+    shareUserId: user?.id,
+  });
 
   const openPreview = async () => {
     if (onBeforeGenerate && !onBeforeGenerate()) return;
@@ -76,7 +80,7 @@ export function SharePosterButton({ data, onBeforeGenerate }: ReportPosterButton
     if (onBeforeGenerate && !onBeforeGenerate()) return;
     setLoading(true);
     try {
-      const url = await generatePoster({ ...data, userName: user?.nickname }, style);
+      const url = await generatePoster({ ...data, userName: user?.nickname, shareUserId: user?.id }, style);
       setPreview(url);
     } finally {
       setLoading(false);
@@ -98,7 +102,7 @@ export function SharePosterButton({ data, onBeforeGenerate }: ReportPosterButton
           onStyleChange={async (s) => {
             setStyle(s);
             setLoading(true);
-            const url = await generatePoster({ ...data, userName: user?.nickname }, s);
+            const url = await generatePoster({ ...data, userName: user?.nickname, shareUserId: user?.id }, s);
             setPreview(url);
             setLoading(false);
           }}

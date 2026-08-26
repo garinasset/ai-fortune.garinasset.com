@@ -1,5 +1,5 @@
 import type { KlineData } from "./types";
-import { getInviteQrUrl } from "./user-store";
+import { getInviteLink, getInviteQrUrl } from "./user-store";
 
 import { BRAND_NAME, BRAND_SLOGAN } from "./brand";
 
@@ -16,6 +16,8 @@ export interface PosterData {
   summary: string;
   scores?: { label: string; value: number }[];
   userName?: string;
+  /** 分享者用户 ID，用于报告二维码邀请注册 */
+  shareUserId?: string;
   type: "lifekline" | "liuyao" | "xiang" | "spirit-pet";
   /** @deprecated use klineCharts */
   kline?: KlineData[];
@@ -216,7 +218,7 @@ export async function generatePoster(data: PosterData, style: PosterStyle = "cla
   const overallDim = dims.find((d) => d.key === "overall" || d.label === "整体命势");
   const otherDims = dims.filter((d) => d !== overallDim);
 
-  const H = 1320 + chartsTotalH + (overallDim ? 60 : 0) + otherDims.length * 36;
+  const H = 1360 + chartsTotalH + (overallDim ? 60 : 0) + otherDims.length * 36;
   const W = 750;
   const theme = STYLES[style];
   const canvas = document.createElement("canvas");
@@ -234,23 +236,23 @@ export async function generatePoster(data: PosterData, style: PosterStyle = "cla
   ctx.fillStyle = theme.gold;
   ctx.font = "bold 32px PingFang SC, sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText(BRAND_NAME, W / 2, 56);
+  ctx.fillText(BRAND_NAME, W / 2, 60);
 
   ctx.fillStyle = theme.muted;
   ctx.font = "15px PingFang SC, sans-serif";
-  ctx.fillText(BRAND_SLOGAN, W / 2, 82);
+  ctx.fillText(BRAND_SLOGAN, W / 2, 92);
 
   ctx.fillStyle = theme.text;
   ctx.font = "bold 34px PingFang SC, sans-serif";
-  ctx.fillText(data.title, W / 2, 130);
+  ctx.fillText(data.title, W / 2, 142);
 
   if (data.subtitle) {
     ctx.fillStyle = theme.muted;
     ctx.font = "20px PingFang SC, sans-serif";
-    ctx.fillText(data.subtitle, W / 2, 162);
+    ctx.fillText(data.subtitle, W / 2, 180);
   }
 
-  let cursorY = data.subtitle ? 185 : 165;
+  let cursorY = data.subtitle ? 210 : 178;
 
   charts.forEach((block) => {
     drawKlineChart(ctx, block.data, 40, cursorY, W - 80, chartBlockH, theme, block.title);
@@ -318,38 +320,39 @@ export async function generatePoster(data: PosterData, style: PosterStyle = "cla
     cursorY += 8;
   }
 
-  const downloadUrl = typeof window !== "undefined" ? window.location.origin : "https://aikline.app";
+  const downloadUrl = getPosterShareUrl(data.shareUserId);
   const qrUrl = getInviteQrUrl(downloadUrl);
 
   try {
     const qrImg = await loadImage(qrUrl);
-    roundRect(ctx, W / 2 - 95, H - 280, 190, 190, 12);
+    roundRect(ctx, W / 2 - 95, H - 300, 190, 190, 12);
     ctx.fillStyle = "#ffffff";
     ctx.fill();
-    ctx.drawImage(qrImg, W / 2 - 85, H - 270, 170, 170);
+    ctx.drawImage(qrImg, W / 2 - 85, H - 290, 170, 170);
   } catch {
-    roundRect(ctx, W / 2 - 95, H - 280, 190, 190, 12);
+    roundRect(ctx, W / 2 - 95, H - 300, 190, 190, 12);
     ctx.fillStyle = "#ffffff";
     ctx.fill();
     ctx.fillStyle = "#333";
     ctx.font = "14px sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText("扫码访问", W / 2, H - 185);
+    ctx.fillText("扫码访问", W / 2, H - 205);
   }
 
   ctx.fillStyle = theme.text;
-  ctx.font = "bold 20px PingFang SC, sans-serif";
+  ctx.font = "bold 18px PingFang SC, sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText("扫码下载 · 测算你的命运", W / 2, H - 70);
+  ctx.fillText(BRAND_SLOGAN, W / 2, H - 78);
 
   ctx.fillStyle = theme.muted;
   ctx.font = "14px PingFang SC, sans-serif";
-  ctx.fillText(`仅供娱乐参考 · ${BRAND_NAME}`, W / 2, H - 40);
+  ctx.fillText("扫码下载 · 测算你的命运", W / 2, H - 52);
+  ctx.fillText(`仅供娱乐参考 · ${BRAND_NAME}`, W / 2, H - 28);
 
   if (data.userName) {
     ctx.fillStyle = theme.gold;
     ctx.font = "16px PingFang SC, sans-serif";
-    ctx.fillText(`—— ${data.userName}`, W / 2, H - 100);
+    ctx.fillText(`—— ${data.userName}`, W / 2, H - 102);
   }
 
   return canvas.toDataURL("image/png");
@@ -394,8 +397,13 @@ const POSTER_BODY_LH = 28;
 const POSTER_LINE_GAP = 10;
 const POSTER_BODY_TOP_GAP = 12;
 const POSTER_TITLE_H = 44;
-const POSTER_FOOTER_H = 180;
-const POSTER_FOOTER_TOP_GAP = 20;
+const POSTER_HEADER_BRAND_H = 58;
+const POSTER_HEADER_TITLE_Y = 108;
+const POSTER_HEADER_SUBTITLE_Y = 148;
+const POSTER_HEADER_H = 168;
+const POSTER_HEADER_H_NO_SUB = 132;
+const POSTER_FOOTER_H = 220;
+const POSTER_FOOTER_TOP_GAP = 28;
 const POSTER_CHART_MODULE_H = 228;
 const POSTER_CHART_INNER_H = 162;
 const POSTER_DIM_ROW_H = 44;
@@ -430,7 +438,14 @@ function countWrapLines(ctx: CanvasRenderingContext2D, text: string, maxWidth: n
 }
 
 function measurePosterHeaderHeight(data: PosterData): number {
-  return data.subtitle ? 158 : 126;
+  return data.subtitle ? POSTER_HEADER_H : POSTER_HEADER_H_NO_SUB;
+}
+
+function getPosterShareUrl(shareUserId?: string): string {
+  if (typeof window === "undefined") {
+    return shareUserId ? `https://ai-fortune.garinasset.com/register?ref=${shareUserId}` : "https://ai-fortune.garinasset.com";
+  }
+  return shareUserId ? getInviteLink(shareUserId) : window.location.origin;
 }
 
 function measureModuleBodyHeight(
@@ -767,18 +782,18 @@ function drawPosterPageHeader(
   theme: typeof STYLES.classic,
 ) {
   ctx.fillStyle = theme.gold;
-  ctx.font = "bold 28px PingFang SC, sans-serif";
+  ctx.font = "bold 26px PingFang SC, sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText(BRAND_NAME, W / 2, 50);
+  ctx.fillText(BRAND_NAME, W / 2, POSTER_HEADER_BRAND_H);
 
   ctx.fillStyle = theme.text;
   ctx.font = "bold 24px PingFang SC, sans-serif";
-  ctx.fillText(data.title, W / 2, 96);
+  ctx.fillText(data.title, W / 2, POSTER_HEADER_TITLE_Y);
 
   if (data.subtitle) {
     ctx.fillStyle = theme.muted;
     ctx.font = "14px PingFang SC, sans-serif";
-    ctx.fillText(data.subtitle, W / 2, 132);
+    ctx.fillText(data.subtitle, W / 2, POSTER_HEADER_SUBTITLE_Y);
   }
 }
 
@@ -894,7 +909,7 @@ async function generateLiuyaoPoster(data: PosterData, style: PosterStyle): Promi
   ctx.fillStyle = theme.accent;
   ctx.font = "bold 16px PingFang SC, sans-serif";
   ctx.textAlign = "left";
-  ctx.fillText("卦象解读", POSTER_PAD + POSTER_CARD_PAD, y + 32);
+  ctx.fillText("AI大模型解卦", POSTER_PAD + POSTER_CARD_PAD, y + 32);
 
   ctx.fillStyle = theme.text;
   ctx.font = POSTER_BODY_FONT;
@@ -904,7 +919,7 @@ async function generateLiuyaoPoster(data: PosterData, style: PosterStyle): Promi
     textY += POSTER_LINE_GAP;
   });
 
-  await drawCompactPosterFooter(ctx, W, y + summaryH + POSTER_FOOTER_TOP_GAP, theme);
+  await drawCompactPosterFooter(ctx, W, y + summaryH + POSTER_FOOTER_TOP_GAP, theme, data.shareUserId);
   return canvas.toDataURL("image/png");
 }
 
@@ -913,10 +928,11 @@ async function drawCompactPosterFooter(
   W: number,
   footerTop: number,
   theme: typeof STYLES.classic,
+  shareUserId?: string,
 ) {
   const qrSize = 108;
   const qrX = W / 2 - qrSize / 2;
-  const downloadUrl = typeof window !== "undefined" ? window.location.origin : "https://aikline.app";
+  const downloadUrl = getPosterShareUrl(shareUserId);
   const qrUrl = getInviteQrUrl(downloadUrl);
 
   ctx.strokeStyle = `${theme.gold}66`;
@@ -928,29 +944,29 @@ async function drawCompactPosterFooter(
 
   try {
     const qrImg = await loadImage(qrUrl);
-    roundRect(ctx, qrX - 8, footerTop + 12, qrSize + 16, qrSize + 16, 10);
+    roundRect(ctx, qrX - 8, footerTop + 16, qrSize + 16, qrSize + 16, 10);
     ctx.fillStyle = "#ffffff";
     ctx.fill();
-    ctx.drawImage(qrImg, qrX, footerTop + 20, qrSize, qrSize);
+    ctx.drawImage(qrImg, qrX, footerTop + 24, qrSize, qrSize);
   } catch {
-    roundRect(ctx, qrX - 8, footerTop + 12, qrSize + 16, qrSize + 16, 10);
+    roundRect(ctx, qrX - 8, footerTop + 16, qrSize + 16, qrSize + 16, 10);
     ctx.fillStyle = "#ffffff";
     ctx.fill();
     ctx.fillStyle = "#333";
     ctx.font = "13px sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText("扫码访问", W / 2, footerTop + 72);
+    ctx.fillText("扫码访问", W / 2, footerTop + 76);
   }
 
   ctx.fillStyle = theme.text;
   ctx.font = "bold 15px PingFang SC, sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText(BRAND_SLOGAN, W / 2, footerTop + qrSize + 42);
+  ctx.fillText(BRAND_SLOGAN, W / 2, footerTop + qrSize + 52);
 
   ctx.fillStyle = theme.muted;
   ctx.font = "12px PingFang SC, sans-serif";
-  ctx.fillText("扫码下载 · 测算你的命运", W / 2, footerTop + qrSize + 62);
-  ctx.fillText(`仅供娱乐参考 · ${BRAND_NAME}`, W / 2, footerTop + qrSize + 82);
+  ctx.fillText("扫码下载 · 测算你的命运", W / 2, footerTop + qrSize + 78);
+  ctx.fillText(`仅供娱乐参考 · ${BRAND_NAME}`, W / 2, footerTop + qrSize + 102);
 }
 
 async function generateLifeklinePoster(data: PosterData, style: PosterStyle): Promise<string> {
@@ -1023,7 +1039,7 @@ async function generateLifeklinePoster(data: PosterData, style: PosterStyle): Pr
     y = drawDimensionsModuleCard(ctx, POSTER_PAD, y, cardW, dims, theme) + POSTER_CARD_GAP;
   }
 
-  await drawCompactPosterFooter(ctx, W, y + POSTER_FOOTER_TOP_GAP, theme);
+  await drawCompactPosterFooter(ctx, W, y + POSTER_FOOTER_TOP_GAP, theme, data.shareUserId);
 
   return canvas.toDataURL("image/png");
 }
@@ -1215,7 +1231,7 @@ async function generateSpiritPetPoster(data: PosterData, style: PosterStyle): Pr
     y = drawPosterModuleCard(ctx, POSTER_PAD, y, cardW, mod, theme) + POSTER_CARD_GAP;
   }
 
-  await drawCompactPosterFooter(ctx, W, y + POSTER_FOOTER_TOP_GAP, theme);
+  await drawCompactPosterFooter(ctx, W, y + POSTER_FOOTER_TOP_GAP, theme, data.shareUserId);
 
   return canvas.toDataURL("image/png");
 }
