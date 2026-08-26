@@ -11,6 +11,7 @@ import type { BirthInfo, KlineData, OverallAnalysis, BaziResult, AnalysisResult 
 import LifeklineChart from "@/components/LifeklineChart";
 import OverallOverviewPanel from "@/components/OverallOverviewPanel";
 import AnalysisPanel from "@/components/AnalysisPanel";
+import FormattedAnalysisText from "@/components/FormattedAnalysisText";
 
 export default function PersonRecordsPage() {
   const params = useParams();
@@ -159,9 +160,13 @@ function RecordDetail({ record }: { record: CalcRecord }) {
     const result = data.result as Record<string, string>;
     return (
       <div className="app-card text-center">
-        <p className="mb-2 text-lg font-bold text-app-gold">{result.guaName}卦 · {result.luck}</p>
-        <p className="text-xs leading-relaxed text-app-muted">{result.analysis}</p>
-        <p className="mt-2 text-xs text-app-gold">{result.advice}</p>
+        <p className="mb-3 text-lg font-bold text-app-gold">{result.guaName}卦 · {result.luck}</p>
+        <FormattedAnalysisText text={result.analysis} collapsedParagraphs={0} />
+        {result.advice && (
+          <div className="mt-3">
+            <FormattedAnalysisText text={`💡 ${result.advice}`} collapsedParagraphs={0} />
+          </div>
+        )}
       </div>
     );
   }
@@ -169,7 +174,7 @@ function RecordDetail({ record }: { record: CalcRecord }) {
   if (record.type === "xiang") {
     return (
       <div className="app-card">
-        <p className="text-xs leading-relaxed text-app-text">{data.summary as string}</p>
+        <FormattedAnalysisText text={data.summary as string} collapsedParagraphs={0} />
       </div>
     );
   }

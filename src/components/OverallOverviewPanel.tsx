@@ -25,7 +25,8 @@ export default function OverallOverviewPanel({ overall, filled = false, showBoos
       {filled && overall ? (
         <FormattedAnalysisText
           text={overall.summary}
-          className="mb-5 text-center text-xs leading-relaxed text-app-muted"
+          className="mb-5"
+          collapsedParagraphs={3}
         />
       ) : (
         <p className="mb-5 text-center text-xs leading-relaxed text-app-muted">
@@ -45,7 +46,7 @@ export default function OverallOverviewPanel({ overall, filled = false, showBoos
             <div className="h-full rounded-full bg-app-accent" style={{ width: `${overallDim.score}%` }} />
           )}
         </div>
-        <FormattedAnalysisText text={overallDim.text} collapsedParagraphs={1} className="text-[11px] leading-relaxed text-app-muted" />
+        <FormattedAnalysisText text={overallDim.text} collapsedParagraphs={2} compact />
       </div>
 
       {showBoostCta && filled && (
@@ -69,7 +70,7 @@ export default function OverallOverviewPanel({ overall, filled = false, showBoos
                 <div className="h-full rounded-full bg-app-accent" style={{ width: `${d.score}%` }} />
               )}
             </div>
-            <FormattedAnalysisText text={d.text} collapsedParagraphs={1} className="text-[10px] leading-relaxed text-app-muted" />
+            <FormattedAnalysisText text={d.text} collapsedParagraphs={2} compact />
           </div>
         ))}
       </div>

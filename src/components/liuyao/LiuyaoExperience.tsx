@@ -220,9 +220,13 @@ export default function LiuyaoExperience({ embedded }: LiuyaoExperienceProps) {
           <AiDisclaimer className="mb-4" />
 
           <div className="app-card mb-4">
-            <h3 className="mb-2 text-sm font-medium">AI大模型解卦</h3>
-            <FormattedAnalysisText text={result.analysis} collapsedParagraphs={2} />
-            <p className="mt-3 text-xs text-app-gold">💡 {result.advice}</p>
+            <h3 className="mb-3 text-sm font-semibold text-app-text">AI大模型解卦</h3>
+            <FormattedAnalysisText text={result.analysis} collapsedParagraphs={0} />
+            {result.advice && (
+              <div className="mt-3">
+                <FormattedAnalysisText text={`💡 ${result.advice}`} collapsedParagraphs={0} />
+              </div>
+            )}
           </div>
 
           <button type="button" onClick={handleReset} className="app-btn mb-4 w-full">

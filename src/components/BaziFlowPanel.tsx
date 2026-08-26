@@ -161,8 +161,8 @@ export default function BaziFlowPanel({ birthInfo, bazi }: BaziFlowPanelProps) {
       {error && <p className="mt-3 text-xs text-red-400">{error}</p>}
 
       {analysis && !loading && (
-        <div className="mt-3 rounded-xl border border-app-border/80 bg-app-bg/60 p-3">
-          {meta && <p className="mb-2 text-[11px] font-medium text-app-accent">{meta}</p>}
+        <div className="mt-3">
+          {meta && <p className="mb-2 text-xs font-semibold text-app-accent">{meta}</p>}
           <FormattedAnalysisText text={analysis} collapsedParagraphs={0} />
         </div>
       )}

@@ -38,6 +38,7 @@ import RecordsHubPanel from "@/components/fortune-hub/RecordsHubPanel";
 import BaziHubPanel from "@/components/fortune-hub/BaziHubPanel";
 import { LifeklineHubDemo } from "@/components/fortune-hub/HubFeatureDemos";
 import FoodRulesModal from "@/components/FoodRulesModal";
+import FormattedAnalysisText from "@/components/FormattedAnalysisText";
 import { PAGE_BANNERS } from "@/lib/page-banners";
 
 function periodTitle(lifeYears: number, drillYear: number | null): string {
@@ -725,10 +726,15 @@ export default function LifeklinePage() {
               }`}>{selectedYear.luck}</span>
               <span className="rounded-full px-2 py-0.5 text-xs text-app-muted">{selectedYear.score}分</span>
             </div>
-            <p className="mb-3 text-xs leading-relaxed text-app-muted">{selectedYear.summary}</p>
-            <ul className="mb-4 space-y-1">
+            <div className="mb-4">
+              <FormattedAnalysisText text={selectedYear.summary} collapsedParagraphs={0} />
+            </div>
+            <ul className="mb-4 space-y-2">
               {selectedYear.highlights.map((h, i) => (
-                <li key={i} className="text-[11px] text-app-muted">· {h}</li>
+                <li key={i} className="flex gap-2 text-[13px] leading-relaxed text-app-text/90">
+                  <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-app-gold/80" />
+                  <span>{h}</span>
+                </li>
               ))}
             </ul>
             <p className="mb-2 text-xs font-medium text-app-text">{selectedYear.year}年 · 12个月运势</p>

@@ -55,8 +55,8 @@ export default function AnalysisPanel({ result, bazi }: AnalysisPanelProps) {
       ) : (
         <>
           <div className="app-card">
-            <h3 className="mb-2 text-sm font-medium text-app-text">综合概述</h3>
-            <FormattedAnalysisText text={result.summary} />
+            <h3 className="mb-3 text-sm font-semibold text-app-text">综合概述</h3>
+            <FormattedAnalysisText text={result.summary} collapsedParagraphs={3} />
           </div>
           <AiDisclaimer />
         </>
@@ -64,25 +64,25 @@ export default function AnalysisPanel({ result, bazi }: AnalysisPanelProps) {
 
       {bazi && (
         <div className="app-card">
-          <h3 className="mb-2 text-sm font-medium text-app-text">综合概述</h3>
-          <FormattedAnalysisText text={result.summary} />
+          <h3 className="mb-3 text-sm font-semibold text-app-text">综合概述</h3>
+          <FormattedAnalysisText text={result.summary} collapsedParagraphs={3} />
         </div>
       )}
 
       <div className="space-y-2">
         {visibleCategories.map(({ key, label, icon }) => (
           <div key={key} className="app-card !p-0 overflow-hidden">
-            <button className="flex w-full items-center justify-between px-4 py-2.5"
+            <button className="flex w-full items-center justify-between px-4 py-3"
               onClick={() => setExpanded(expanded === key ? null : key)}>
               <span className="flex items-center gap-2 text-sm">
                 <span>{icon}</span>
-                <span className="font-medium text-app-text">{label}</span>
+                <span className="font-semibold text-app-text">{label}</span>
               </span>
               {expanded === key ? <ChevronUp className="h-4 w-4 text-app-muted" /> : <ChevronDown className="h-4 w-4 text-app-muted" />}
             </button>
             {expanded === key && result.categories[key] && (
-              <div className="border-t border-app-border px-4 pb-3 pt-2">
-                <FormattedAnalysisText text={result.categories[key]!} collapsedParagraphs={1} expandLabel="查看完整分析" />
+              <div className="border-t border-app-border px-4 pb-4 pt-3">
+                <FormattedAnalysisText text={result.categories[key]!} collapsedParagraphs={2} expandLabel="查看完整分析" />
               </div>
             )}
           </div>
