@@ -1,22 +1,20 @@
-/** 将 AI 文本拆成段落（优先按句号分句，再按空行分段） */
-export function splitAnalysisParagraphs(text: string): string[] {
+/** 按空行/换行拆成逻辑段落（用于折叠计数，与改版前一致） */
+export function splitAnalysisBlocks(text: string): string[] {
   if (!text?.trim()) return [];
   const normalized = text.replace(/\r\n/g, "\n").trim();
+  const byDouble = normalized.split(/\n\s*\n+/).map((p) => p.trim()).filter(Boolean);
+  if (byDouble.length > 1) return byDouble;
+  return normalized.split(/\n+/).map((p) => p.trim()).filter(Boolean);
+}
 
-  const blocks = normalized.split(/\n\s*\n+/).map((p) => p.trim()).filter(Boolean);
-  const chunks = blocks.length > 0 ? blocks : [normalized];
+function splitSentences(chunk: string): string[] {
+  const parts = chunk.split(/(?<=[。！？；])\s*/u).map((s) => s.trim()).filter(Boolean);
+  return parts.length > 0 ? parts : [chunk];
+}
 
-  const sentences: string[] = [];
-  for (const chunk of chunks) {
-    const parts = chunk
-      .split(/(?<=[。！？；])\s*/u)
-      .map((s) => s.trim())
-      .filter(Boolean);
-    if (parts.length > 0) sentences.push(...parts);
-    else sentences.push(chunk);
-  }
-
-  return sentences;
+/** 将 AI 文本拆成展示段落（逻辑段内按句号分句，便于阅读） */
+export function splitAnalysisParagraphs(text: string): string[] {
+  return splitAnalysisBlocks(text).flatMap(splitSentences);
 }
 
 export function truncateParagraphs(paragraphs: string[], maxParagraphs: number): string[] {

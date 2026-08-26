@@ -6,7 +6,7 @@ import AnalysisCopyButton from "@/components/AnalysisCopyButton";
 import {
   formatAnalysisForCopy,
   parseAnalysisSegments,
-  splitAnalysisParagraphs,
+  splitAnalysisBlocks,
   truncateParagraphs,
   type AnalysisSegment,
 } from "@/lib/format-analysis-text";
@@ -108,19 +108,19 @@ export default function FormattedAnalysisText({
   label = "解读",
   showLabel = true,
 }: FormattedAnalysisTextProps) {
-  const paragraphs = useMemo(() => splitAnalysisParagraphs(text), [text]);
+  const blocks = useMemo(() => splitAnalysisBlocks(text), [text]);
   const [expanded, setExpanded] = useState(false);
 
-  const canCollapse = collapsedParagraphs > 0 && paragraphs.length > collapsedParagraphs;
-  const visibleParagraphs = expanded || !canCollapse
-    ? paragraphs
-    : truncateParagraphs(paragraphs, collapsedParagraphs);
+  const canCollapse = collapsedParagraphs > 0 && blocks.length > collapsedParagraphs;
+  const visibleBlocks = expanded || !canCollapse
+    ? blocks
+    : truncateParagraphs(blocks, collapsedParagraphs);
 
-  const visibleText = visibleParagraphs.join("\n\n");
+  const visibleText = visibleBlocks.join("\n\n");
   const segments = useMemo(() => parseAnalysisSegments(visibleText), [visibleText]);
   const copyText = formatAnalysisForCopy(expanded || !canCollapse ? text : visibleText);
 
-  if (!paragraphs.length) return null;
+  if (!blocks.length) return null;
 
   return (
     <div className={`rounded-xl border border-app-border/80 bg-app-bg/50 ${compact ? "px-3 py-2.5" : "px-3.5 py-3.5"} ${className}`}>
