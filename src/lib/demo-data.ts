@@ -98,6 +98,7 @@ export const DEMO_XIANG = DEMO_XIANG_PALM;
 
 export const DEMO_LIUYAO = {
   guaName: "泰",
+  guaDesc: "天地交，泰",
   luck: "吉" as const,
   question: "今年能否换工作？",
   analysis: "天地交泰，上下沟通顺畅。当前卦象示变动有利，但需择善时而动，不可仓促。",

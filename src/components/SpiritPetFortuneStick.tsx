@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { SpiritPetProfile, BirthInfo } from "@/lib/types";
+import { playLiuyaoCoinSound, type LiuyaoSoundHandle } from "@/lib/liuyao-coin-sound";
 import {
   canDrawFortuneStickToday,
   drawFortuneStick,
@@ -47,10 +48,20 @@ function TempleFortuneCylinder({ shaking }: { shaking: boolean }) {
   );
 }
 
+/** 摇签动画时长，与六爻摇卦音效一致 */
+const FORTUNE_STICK_DRAW_MS = 3000;
+
 export default function SpiritPetFortuneStick({ pet, personKey, birth }: SpiritPetFortuneStickProps) {
   const [drawing, setDrawing] = useState(false);
   const [stick, setStick] = useState<FortuneStick | null>(null);
   const [canDraw, setCanDraw] = useState(true);
+  const soundRef = useRef<LiuyaoSoundHandle | null>(null);
+
+  useEffect(() => {
+    return () => {
+      soundRef.current?.stop();
+    };
+  }, []);
 
   useEffect(() => {
     const saved = getSavedFortuneStick(personKey);
@@ -65,14 +76,17 @@ export default function SpiritPetFortuneStick({ pet, personKey, birth }: SpiritP
   const handleDraw = () => {
     if (!canDraw || drawing) return;
     setDrawing(true);
-    setTimeout(() => {
+    soundRef.current?.stop();
+    soundRef.current = playLiuyaoCoinSound();
+    window.setTimeout(() => {
       const seed = hashBirth(birth) + Date.now();
       const result = drawFortuneStick(personKey, seed);
       saveFortuneStickResult(personKey, result);
       setStick(result);
       setCanDraw(false);
       setDrawing(false);
-    }, 2400);
+      soundRef.current?.stop();
+    }, FORTUNE_STICK_DRAW_MS);
   };
 
   return (

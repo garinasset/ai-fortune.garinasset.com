@@ -16,13 +16,15 @@ import { BRAND_SLOGAN_LINES } from "@/lib/brand";
 import { PAGE_BANNERS } from "@/lib/page-banners";
 import { ensurePrimaryPersonBeforeCalc } from "@/lib/person-store";
 import {
-  DEMO_KLINE, DEMO_STATS, DEMO_BAZI, DEMO_AI_ASK, DEMO_XIANG, DEMO_LIUYAO, DEMO_REPORT, DEMO_SPIRIT_PET, DEMO_SPIRIT_PET_BREEDS,
+  DEMO_KLINE, DEMO_STATS, DEMO_BAZI, DEMO_AI_ASK, DEMO_XIANG, DEMO_REPORT, DEMO_SPIRIT_PET, DEMO_SPIRIT_PET_BREEDS,
 } from "@/lib/demo-data";
+import { LiuyaoDemoCard } from "@/components/fortune-hub/HubFeatureDemos";
+import TodayHuangliCard from "@/components/TodayHuangliCard";
 
 const PRIMARY_ROW1 = [
   { href: "/spirit-pet", emoji: "🦄", label: "AI 灵宠", desc: "守护灵宠" },
   { href: "/lifekline", icon: TrendingUp, label: "人生K线", desc: "命势可视化" },
-  { href: "/liuyao", hexagram: true, label: "AI六爻", desc: "卦象占卜" },
+  { href: "/lifekline?tab=liuyao", hexagram: true, label: "AI六爻", desc: "卦象占卜" },
 ];
 
 const PRIMARY_ROW2 = [
@@ -143,6 +145,8 @@ export default function HomePage() {
         <span className="text-base">🦄</span>
         马上收养我的第一只灵宠！
       </Link>
+
+      <TodayHuangliCard />
 
       {/* 更多服务 */}
       <section className="page-section">
@@ -295,15 +299,8 @@ export default function HomePage() {
 
         {/* AI六爻 */}
         <div>
-          <DemoHeader title="AI 六爻 · 示例" href="/liuyao" />
-          <div className="app-card">
-            <p className="mb-1 text-[10px] text-app-muted">所问：{DEMO_LIUYAO.question}</p>
-            <div className="my-2 flex items-center justify-center gap-3">
-              <span className="text-2xl font-bold text-app-gold">{DEMO_LIUYAO.guaName}卦</span>
-              <span className="rounded-full bg-red-500/20 px-2 py-0.5 text-xs text-red-400">{DEMO_LIUYAO.luck}</span>
-            </div>
-            <p className="text-xs leading-relaxed text-app-muted">{DEMO_LIUYAO.analysis}</p>
-          </div>
+          <DemoHeader title="AI 六爻 · 示例" href="/lifekline?tab=liuyao" />
+          <LiuyaoDemoCard />
         </div>
       </section>
 

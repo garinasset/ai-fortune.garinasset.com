@@ -1,11 +1,11 @@
 "use client";
 
 import HomeKlinePreview from "@/components/HomeKlinePreview";
+import LiuyaoDemoCard from "@/components/liuyao/LiuyaoDemoCard";
 import {
   DEMO_KLINE,
   DEMO_STATS,
   DEMO_BAZI,
-  DEMO_LIUYAO,
   DEMO_XIANG,
 } from "@/lib/demo-data";
 import type { KlineData } from "@/lib/types";
@@ -28,14 +28,7 @@ const demoKline: KlineData[] = DEMO_KLINE.map((d) => ({
 export function LiuyaoHubDemo() {
   return (
     <DemoSection title="AI 六爻">
-      <div className="app-card !p-3">
-        <p className="mb-1 text-[10px] text-app-muted">所问：{DEMO_LIUYAO.question}</p>
-        <div className="my-2 flex items-center justify-center gap-3">
-          <span className="text-xl font-bold text-app-gold">{DEMO_LIUYAO.guaName}卦</span>
-          <span className="rounded-full bg-red-500/20 px-2 py-0.5 text-xs text-red-400">{DEMO_LIUYAO.luck}</span>
-        </div>
-        <p className="text-xs leading-relaxed text-app-muted">{DEMO_LIUYAO.analysis}</p>
-      </div>
+      <LiuyaoDemoCard />
     </DemoSection>
   );
 }
@@ -99,3 +92,5 @@ export function XiangHubDemo() {
     </DemoSection>
   );
 }
+
+export { LiuyaoDemoCard };
