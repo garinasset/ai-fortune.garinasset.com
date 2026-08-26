@@ -26,7 +26,7 @@ export default function AnalysisCopyButton({ text, className = "" }: AnalysisCop
     <button
       type="button"
       onClick={handleCopy}
-      className={`inline-flex shrink-0 items-center gap-1 rounded-md border border-app-border/80 bg-app-card/80 px-2 py-1 text-[10px] font-medium text-app-muted transition-colors hover:border-app-accent/40 hover:text-app-accent ${className}`}
+      className={`inline-flex shrink-0 items-center gap-1 rounded-lg border border-app-gold/40 bg-app-gold/15 px-2.5 py-1.5 text-[11px] font-semibold text-app-gold transition-colors hover:border-app-gold hover:bg-app-gold/25 ${className}`}
       aria-label="复制解读文字"
     >
       {copied ? <Check className="h-3 w-3 text-app-gold" /> : <Copy className="h-3 w-3" />}

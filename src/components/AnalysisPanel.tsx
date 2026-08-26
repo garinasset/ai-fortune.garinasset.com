@@ -56,7 +56,7 @@ export default function AnalysisPanel({ result, bazi }: AnalysisPanelProps) {
         <>
           <div className="app-card">
             <h3 className="mb-3 text-sm font-semibold text-app-text">综合概述</h3>
-            <FormattedAnalysisText text={result.summary} collapsedParagraphs={3} />
+            <FormattedAnalysisText text={result.summary} collapsedParagraphs={3} label="综合概述" />
           </div>
           <AiDisclaimer />
         </>
@@ -65,7 +65,7 @@ export default function AnalysisPanel({ result, bazi }: AnalysisPanelProps) {
       {bazi && (
         <div className="app-card">
           <h3 className="mb-3 text-sm font-semibold text-app-text">综合概述</h3>
-          <FormattedAnalysisText text={result.summary} collapsedParagraphs={3} />
+          <FormattedAnalysisText text={result.summary} collapsedParagraphs={3} label="综合概述" />
         </div>
       )}
 
@@ -82,7 +82,7 @@ export default function AnalysisPanel({ result, bazi }: AnalysisPanelProps) {
             </button>
             {expanded === key && result.categories[key] && (
               <div className="border-t border-app-border px-4 pb-4 pt-3">
-                <FormattedAnalysisText text={result.categories[key]!} collapsedParagraphs={2} expandLabel="查看完整分析" />
+                <FormattedAnalysisText text={result.categories[key]!} collapsedParagraphs={2} expandLabel="查看完整分析" label={`${label}解读`} />
               </div>
             )}
           </div>

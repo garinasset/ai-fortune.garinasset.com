@@ -7,6 +7,9 @@ interface LiuyaoHexagramDisplayProps {
   lines: YaoLine[];
   guaName: string;
   guaDesc: string;
+  trigramLabel?: string;
+  lowerTrigram?: string;
+  upperTrigram?: string;
   luck?: string;
   showLuck?: boolean;
 }
@@ -16,6 +19,9 @@ export default function LiuyaoHexagramDisplay({
   lines,
   guaName,
   guaDesc,
+  trigramLabel,
+  lowerTrigram,
+  upperTrigram,
   luck,
   showLuck = false,
 }: LiuyaoHexagramDisplayProps) {
@@ -31,12 +37,17 @@ export default function LiuyaoHexagramDisplay({
 
       <div className="mt-4 rounded-xl border-2 border-app-gold/50 bg-gradient-to-b from-app-gold/18 to-app-gold/5 px-5 py-5 text-center shadow-[0_0_28px_rgba(212,165,116,0.18)]">
         <p className="mb-3 text-sm font-semibold tracking-[0.25em] text-app-gold">卦 象</p>
+        {(upperTrigram && lowerTrigram) && (
+          <p className="mb-2 text-xs text-app-muted">
+            上{upperTrigram} · 下{lowerTrigram}
+            {trigramLabel ? `（${trigramLabel}）` : ""}
+          </p>
+        )}
         <p className="text-[1.5rem] font-bold leading-snug text-app-gold sm:text-[1.85rem]">
           {guaName}卦
-          <span className="mx-2 font-normal text-app-gold/70">·</span>
-          <span className="mt-2 block text-base font-semibold leading-relaxed text-app-text sm:mt-0 sm:inline sm:text-lg">
-            {guaDesc}
-          </span>
+        </p>
+        <p className="mt-2 text-sm leading-relaxed text-app-text/90">
+          {guaDesc}
         </p>
         {showLuck && luck && (
           <span className={`mt-3 inline-block rounded-full px-3 py-1 text-xs ${

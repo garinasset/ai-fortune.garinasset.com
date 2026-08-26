@@ -22,6 +22,8 @@ interface FormattedAnalysisTextProps {
   copyable?: boolean;
   /** 紧凑模式（用于维度卡片等小区域） */
   compact?: boolean;
+  /** 顶部标签 */
+  label?: string;
 }
 
 function HighlightedLine({ text }: { text: string }) {
@@ -55,7 +57,7 @@ function SegmentBlock({ segment, compact }: { segment: AnalysisSegment; compact?
   switch (segment.type) {
     case "lead":
       return (
-        <p className={`font-medium text-app-text ${compact ? "text-[13px] leading-[1.7]" : "text-[15px] leading-[1.85]"}`}>
+        <p className={`font-semibold text-app-text ${compact ? "text-[13px] leading-[1.75]" : "text-[15px] leading-[1.85]"}`}>
           <HighlightedLine text={segment.text} />
         </p>
       );
@@ -67,7 +69,7 @@ function SegmentBlock({ segment, compact }: { segment: AnalysisSegment; compact?
       );
     case "tip":
       return (
-        <div className={`rounded-lg border border-app-gold/25 bg-app-gold/10 px-3 py-2.5 ${compact ? "text-xs" : "text-[13px]"} leading-relaxed text-app-gold`}>
+        <div className={`rounded-lg border border-app-gold/30 bg-app-gold/12 px-3 py-2.5 ${compact ? "text-xs" : "text-[13px]"} leading-relaxed text-app-gold`}>
           <span className="mr-1">💡</span>
           <HighlightedLine text={segment.text} />
         </div>
@@ -86,7 +88,7 @@ function SegmentBlock({ segment, compact }: { segment: AnalysisSegment; compact?
     case "paragraph":
     default:
       return (
-        <p className={`leading-[1.75] text-app-text/90 ${compact ? "text-xs" : "text-[13px]"}`}>
+        <p className={`leading-[1.8] text-app-text/92 ${compact ? "text-[13px]" : "text-sm"}`}>
           <HighlightedLine text={segment.text} />
         </p>
       );
@@ -101,6 +103,7 @@ export default function FormattedAnalysisText({
   collapseLabel = "收起分析",
   copyable = true,
   compact = false,
+  label = "解读",
 }: FormattedAnalysisTextProps) {
   const paragraphs = useMemo(() => splitAnalysisParagraphs(text), [text]);
   const [expanded, setExpanded] = useState(false);
@@ -117,14 +120,13 @@ export default function FormattedAnalysisText({
   if (!paragraphs.length) return null;
 
   return (
-    <div className={`relative rounded-xl border border-app-border/70 bg-app-bg/45 ${compact ? "px-3 py-2.5" : "px-3.5 py-3.5"} ${className}`}>
-      {copyable && (
-        <div className="absolute right-2 top-2 z-[1]">
-          <AnalysisCopyButton text={copyText} />
-        </div>
-      )}
+    <div className={`rounded-xl border border-app-border/80 bg-app-bg/50 ${compact ? "px-3 py-2.5" : "px-3.5 py-3.5"} ${className}`}>
+      <div className="mb-3 flex items-center justify-between gap-2 border-b border-app-border/50 pb-2.5">
+        <span className="text-xs font-semibold text-app-gold">{label}</span>
+        {copyable && <AnalysisCopyButton text={copyText} />}
+      </div>
 
-      <div className={`space-y-3 ${copyable ? "pr-14" : ""}`}>
+      <div className="space-y-3">
         {segments.map((segment, i) => (
           <SegmentBlock key={i} segment={segment} compact={compact} />
         ))}

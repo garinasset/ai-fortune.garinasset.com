@@ -27,6 +27,7 @@ export default function OverallOverviewPanel({ overall, filled = false, showBoos
           text={overall.summary}
           className="mb-5"
           collapsedParagraphs={3}
+          label="命理总览"
         />
       ) : (
         <p className="mb-5 text-center text-xs leading-relaxed text-app-muted">
@@ -46,7 +47,7 @@ export default function OverallOverviewPanel({ overall, filled = false, showBoos
             <div className="h-full rounded-full bg-app-accent" style={{ width: `${overallDim.score}%` }} />
           )}
         </div>
-        <FormattedAnalysisText text={overallDim.text} collapsedParagraphs={2} compact />
+        <FormattedAnalysisText text={overallDim.text} collapsedParagraphs={2} compact label="整体命势" />
       </div>
 
       {showBoostCta && filled && (
@@ -70,7 +71,7 @@ export default function OverallOverviewPanel({ overall, filled = false, showBoos
                 <div className="h-full rounded-full bg-app-accent" style={{ width: `${d.score}%` }} />
               )}
             </div>
-            <FormattedAnalysisText text={d.text} collapsedParagraphs={2} compact />
+            <FormattedAnalysisText text={d.text} collapsedParagraphs={2} compact label={d.label} />
           </div>
         ))}
       </div>

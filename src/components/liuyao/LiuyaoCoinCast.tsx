@@ -159,6 +159,9 @@ export default function LiuyaoCoinCast({ question, onRequestAnalysis, disabled }
               lines={lines}
               guaName={meta.guaName}
               guaDesc={meta.guaDesc}
+              trigramLabel={meta.trigramLabel}
+              lowerTrigram={meta.lowerTrigram}
+              upperTrigram={meta.upperTrigram}
             />
             <div className="mt-4 text-center">
               <button

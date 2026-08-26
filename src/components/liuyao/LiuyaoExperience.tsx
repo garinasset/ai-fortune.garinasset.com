@@ -212,6 +212,9 @@ export default function LiuyaoExperience({ embedded }: LiuyaoExperienceProps) {
               lines={result.lines}
               guaName={result.guaName}
               guaDesc={result.guaDesc}
+              trigramLabel={result.trigramLabel}
+              lowerTrigram={result.lowerTrigram}
+              upperTrigram={result.upperTrigram}
               luck={result.luck}
               showLuck
             />
@@ -221,10 +224,10 @@ export default function LiuyaoExperience({ embedded }: LiuyaoExperienceProps) {
 
           <div className="app-card mb-4">
             <h3 className="mb-3 text-sm font-semibold text-app-text">AI大模型解卦</h3>
-            <FormattedAnalysisText text={result.analysis} collapsedParagraphs={0} />
+            <FormattedAnalysisText text={result.analysis} collapsedParagraphs={0} label="解卦正文" />
             {result.advice && (
               <div className="mt-3">
-                <FormattedAnalysisText text={`💡 ${result.advice}`} collapsedParagraphs={0} />
+                <FormattedAnalysisText text={`💡 ${result.advice}`} collapsedParagraphs={0} label="行动建议" />
               </div>
             )}
           </div>

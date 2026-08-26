@@ -727,7 +727,7 @@ export default function LifeklinePage() {
               <span className="rounded-full px-2 py-0.5 text-xs text-app-muted">{selectedYear.score}分</span>
             </div>
             <div className="mb-4">
-              <FormattedAnalysisText text={selectedYear.summary} collapsedParagraphs={0} />
+              <FormattedAnalysisText text={selectedYear.summary} collapsedParagraphs={0} label="流年解读" />
             </div>
             <ul className="mb-4 space-y-2">
               {selectedYear.highlights.map((h, i) => (

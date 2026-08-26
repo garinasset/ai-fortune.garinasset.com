@@ -1,10 +1,22 @@
-/** 将 AI 文本拆成段落（支持 \\n\\n 或单换行） */
+/** 将 AI 文本拆成段落（优先按句号分句，再按空行分段） */
 export function splitAnalysisParagraphs(text: string): string[] {
   if (!text?.trim()) return [];
   const normalized = text.replace(/\r\n/g, "\n").trim();
-  const byDouble = normalized.split(/\n\s*\n+/).map((p) => p.trim()).filter(Boolean);
-  if (byDouble.length > 1) return byDouble;
-  return normalized.split(/\n+/).map((p) => p.trim()).filter(Boolean);
+
+  const blocks = normalized.split(/\n\s*\n+/).map((p) => p.trim()).filter(Boolean);
+  const chunks = blocks.length > 0 ? blocks : [normalized];
+
+  const sentences: string[] = [];
+  for (const chunk of chunks) {
+    const parts = chunk
+      .split(/(?<=[。！？；])+/u)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (parts.length > 0) sentences.push(...parts);
+    else sentences.push(chunk);
+  }
+
+  return sentences;
 }
 
 export function truncateParagraphs(paragraphs: string[], maxParagraphs: number): string[] {
@@ -45,7 +57,7 @@ function parseParagraphSegments(paragraph: string, isFirst: boolean): AnalysisSe
     }];
   }
 
-  if (isFirst && lines.length === 1) {
+  if (isFirst) {
     return [{ type: "lead", text: trimmed }];
   }
 
