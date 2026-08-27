@@ -1125,3 +1125,84 @@
   transform: translateY(-2px);
   transition: transform 0.2s ease;
 }
+
+/* ─── 塔罗牌动画 ─── */
+@keyframes tarot-shuffle {
+  0%, 100% { transform: translate(calc(-50% + var(--tx, 0px)), calc(-50% + var(--ty, 0px))) rotate(var(--rot, 0deg)); }
+  25% { transform: translate(calc(-50% + var(--tx, 0px) + 18px), calc(-50% + var(--ty, 0px) - 12px)) rotate(calc(var(--rot, 0deg) + 8deg)); }
+  50% { transform: translate(calc(-50% + var(--tx, 0px) - 14px), calc(-50% + var(--ty, 0px) + 8px)) rotate(calc(var(--rot, 0deg) - 6deg)); }
+  75% { transform: translate(calc(-50% + var(--tx, 0px) + 10px), calc(-50% + var(--ty, 0px) - 6px)) rotate(calc(var(--rot, 0deg) + 4deg)); }
+}
+
+.animate-tarot-shuffle {
+  animation: tarot-shuffle 0.85s ease-in-out infinite;
+}
+
+@keyframes tarot-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+.animate-tarot-float {
+  animation: tarot-float 2.4s ease-in-out infinite;
+}
+
+@keyframes tarot-glow {
+  0%, 100% { box-shadow: 0 0 16px rgba(212, 165, 116, 0.35); }
+  50% { box-shadow: 0 0 28px rgba(212, 165, 116, 0.65), 0 0 48px rgba(167, 139, 250, 0.25); }
+}
+
+.animate-tarot-glow {
+  animation: tarot-glow 1.8s ease-in-out infinite;
+}
+
+@keyframes tarot-land {
+  0% { transform: scale(1.08); }
+  60% { transform: scale(0.98); }
+  100% { transform: scale(1); }
+}
+
+.animate-tarot-land {
+  animation: tarot-land 0.45s ease-out 1;
+}
+
+@keyframes tarot-fade-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-tarot-fade-up {
+  animation: tarot-fade-up 0.55s ease-out both;
+}
+
+.tarot-flip-scene {
+  transform-style: preserve-3d;
+}
+
+.tarot-flip-inner {
+  transform-style: preserve-3d;
+}
+
+/* 塔罗 AI 暗黑主题：解读区与通用文字在深色底上的可读性 */
+.tarot-dark-theme .text-app-text {
+  color: rgb(237 233 254 / 0.92);
+}
+
+.tarot-dark-theme .text-app-text\/90,
+.tarot-dark-theme .text-app-text\/92 {
+  color: rgb(237 233 254 / 0.88);
+}
+
+.tarot-dark-theme .text-app-muted {
+  color: rgb(167 139 250 / 0.55);
+}
+
+.tarot-dark-theme .border-app-border,
+.tarot-dark-theme .border-app-border\/50,
+.tarot-dark-theme .border-app-border\/80 {
+  border-color: rgb(139 92 246 / 0.22);
+}
+
+.tarot-dark-theme .bg-app-bg\/50 {
+  background-color: rgb(10 6 18 / 0.65);
+}

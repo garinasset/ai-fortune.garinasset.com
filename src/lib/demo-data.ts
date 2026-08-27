@@ -116,6 +116,31 @@ export const DEMO_LIUYAO = {
   trigramLabel: "天地",
 };
 
+export const DEMO_TAROT = {
+  question: "近期感情会有转机吗？",
+  summary: "过去：恋人（正位）→ 现在：月亮（逆位）→ 未来：太阳（正位）。迷雾渐散，真诚沟通后有望迎来明朗与温暖。",
+  cards: [
+    {
+      card: { id: "major-6", name: "恋人", nameEn: "The Lovers", suit: "major" as const, number: 6, keywords: "选择、关系、价值", symbol: "💞", roman: "VI" },
+      reversed: false,
+      position: "past",
+      positionLabel: "过去",
+    },
+    {
+      card: { id: "major-18", name: "月亮", nameEn: "The Moon", suit: "major" as const, number: 18, keywords: "迷雾、情绪、潜意识", symbol: "🌕", roman: "XVIII" },
+      reversed: true,
+      position: "present",
+      positionLabel: "现在",
+    },
+    {
+      card: { id: "major-19", name: "太阳", nameEn: "The Sun", suit: "major" as const, number: 19, keywords: "成功、活力、清晰", symbol: "☀️", roman: "XIX" },
+      reversed: false,
+      position: "future",
+      positionLabel: "未来",
+    },
+  ],
+};
+
 export const DEMO_REPORT = {
   title: "2026 年度运势报告",
   scores: [

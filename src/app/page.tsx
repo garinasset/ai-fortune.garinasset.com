@@ -19,12 +19,14 @@ import {
   DEMO_KLINE, DEMO_STATS, DEMO_BAZI, DEMO_AI_ASK, DEMO_XIANG, DEMO_REPORT, DEMO_SPIRIT_PET, DEMO_SPIRIT_PET_BREEDS,
 } from "@/lib/demo-data";
 import { LiuyaoDemoCard } from "@/components/fortune-hub/HubFeatureDemos";
+import TarotDemoCard from "@/components/tarot/TarotDemoCard";
 import TodayHuangliCard from "@/components/TodayHuangliCard";
 
 const PRIMARY_ROW1 = [
   { href: "/spirit-pet", emoji: "🦄", label: "AI 灵宠", desc: "守护灵宠" },
   { href: "/lifekline", icon: TrendingUp, label: "人生K线", desc: "命势可视化" },
   { href: "/lifekline?tab=liuyao", hexagram: true, label: "AI六爻", desc: "卦象占卜" },
+  { href: "/lifekline?tab=tarot", emoji: "🔮", label: "塔罗AI", desc: "韦特牌阵" },
 ];
 
 const PRIMARY_ROW2 = [
@@ -88,7 +90,7 @@ export default function HomePage() {
       {/* 核心功能 */}
       <section className="page-section">
         <p className="section-label">核心功能</p>
-        <div className="mb-2 grid grid-cols-3 gap-2">
+        <div className="mb-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
           {PRIMARY_ROW1.map((item) => {
             const Icon = "icon" in item ? item.icon : null;
             return (
@@ -301,6 +303,12 @@ export default function HomePage() {
         <div>
           <DemoHeader title="AI 六爻 · 示例" href="/lifekline?tab=liuyao" />
           <LiuyaoDemoCard />
+        </div>
+
+        {/* 塔罗AI */}
+        <div>
+          <DemoHeader title="塔罗 AI · 示例" href="/lifekline?tab=tarot" />
+          <TarotDemoCard />
         </div>
       </section>
 

@@ -134,11 +134,12 @@ export interface UsageRecord {
   xiang: number;
   aiAsk: number;
   liuyao: number;
+  tarot: number;
 }
 
 export interface HistoryItem {
   id: string;
-  type: "lifekline" | "xiang" | "aiAsk" | "liuyao" | "master";
+  type: "lifekline" | "xiang" | "aiAsk" | "liuyao" | "tarot" | "master";
   title: string;
   createdAt: string;
   data: unknown;

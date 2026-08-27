@@ -12,6 +12,7 @@ import LifeklineChart from "@/components/LifeklineChart";
 import OverallOverviewPanel from "@/components/OverallOverviewPanel";
 import AnalysisPanel from "@/components/AnalysisPanel";
 import FormattedAnalysisText from "@/components/FormattedAnalysisText";
+import TarotSpreadDisplay from "@/components/tarot/TarotSpreadDisplay";
 
 export default function PersonRecordsPage() {
   const params = useParams();
@@ -161,10 +162,31 @@ function RecordDetail({ record }: { record: CalcRecord }) {
     return (
       <div className="app-card text-center">
         <p className="mb-3 text-lg font-bold text-app-gold">{result.guaName}卦 · {result.luck}</p>
-        <FormattedAnalysisText text={result.analysis} collapsedParagraphs={0} />
+        <FormattedAnalysisText text={result.analysis} collapsedParagraphs={0} showLabel={false} />
         {result.advice && (
           <div className="mt-3">
-            <FormattedAnalysisText text={`💡 ${result.advice}`} collapsedParagraphs={0} />
+            <FormattedAnalysisText text={`💡 ${result.advice}`} collapsedParagraphs={0} showLabel={false} />
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (record.type === "tarot") {
+    const payload = data as { question?: string; result?: { cards?: import("@/lib/tarot/types").DrawnTarotCard[]; analysis?: string; advice?: string; theme?: string } };
+    const result = payload.result;
+    return (
+      <div className="app-card">
+        {payload.question && <p className="mb-3 text-sm text-app-muted">所问：{payload.question}</p>}
+        {result?.cards && (
+          <div className="mb-4">
+            <TarotSpreadDisplay cards={result.cards} size="sm" />
+          </div>
+        )}
+        {result?.analysis && <FormattedAnalysisText text={result.analysis} collapsedParagraphs={0} showLabel={false} />}
+        {result?.advice && (
+          <div className="mt-3">
+            <FormattedAnalysisText text={`💡 ${result.advice}`} collapsedParagraphs={0} showLabel={false} />
           </div>
         )}
       </div>

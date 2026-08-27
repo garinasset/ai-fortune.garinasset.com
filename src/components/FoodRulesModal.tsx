@@ -27,7 +27,7 @@ export default function FoodRulesModal({ open, onClose }: FoodRulesModalProps) {
         <div className="space-y-3 body-text">
           <p className="flex items-start gap-2">
             <SpiritGourdIcon className="mt-0.5 h-5 w-5 shrink-0 text-app-gold" title="灵丹" />
-            <span><span className="font-semibold">1 瓶灵丹 = {USES_PER_BAG} 次测算</span>（人生K线、AI六爻、八字排盘、AI看相、问AI灵宠等）</span>
+            <span><span className="font-semibold">1 瓶灵丹 = {USES_PER_BAG} 次测算</span>（人生K线、AI六爻、塔罗AI、八字排盘、AI看相、问AI灵宠等）</span>
           </p>
           <p>新用户注册赠送 <span className="font-semibold text-app-gold">{SIGNUP_GIFT_BAGS} 瓶</span>灵丹（{SIGNUP_GIFT_BAGS * USES_PER_BAG} 次测算）</p>
           <p>邀请好友注册，双方各得灵丹奖励；灵丹不足时可购买或邀请好友</p>

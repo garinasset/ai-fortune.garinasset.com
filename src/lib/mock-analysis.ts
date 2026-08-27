@@ -250,6 +250,20 @@ export function getMockSpiritPetAnswer(params: {
   return params.petName ? `${petTitle}：${body}` : body;
 }
 
+export function getMockTarotResult(params: {
+  question: string;
+  spreadText: string;
+}): { analysis: string; advice: string; theme: string } {
+  const themes = ["转机与觉醒", "情感疗愈", "事业突破", "内省与等待", "新开始"];
+  const seed = hashString(params.question + params.spreadText);
+  const theme = themes[seed % themes.length];
+  return {
+    theme,
+    analysis: `所问：「${params.question}」\n\n${params.spreadText}\n\n牌阵整体呈现「${theme}」的能量。过去的影响正在沉淀，当下的选择尤为关键，未来方向取决于你此刻的心态与行动。请结合正逆位差异，理解每张牌在你处境中的独特启示。`,
+    advice: "宜保持内心平静，以直觉指引行动；忌因焦虑反复抽牌或急于求成。",
+  };
+}
+
 export function getMockLiuyaoResult(params: {
   question: string;
   guaName: string;

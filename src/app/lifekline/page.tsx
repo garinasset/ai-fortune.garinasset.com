@@ -31,6 +31,7 @@ import PageCarouselBanner from "@/components/PageCarouselBanner";
 import FortuneHubNav, { type FortuneHubTab } from "@/components/FortuneHubNav";
 import AiDisclaimer from "@/components/AiDisclaimer";
 import LiuyaoHubPanel from "@/components/fortune-hub/LiuyaoHubPanel";
+import TarotHubPanel from "@/components/fortune-hub/TarotHubPanel";
 import XiangHubPanel from "@/components/fortune-hub/XiangHubPanel";
 import MasterHubPanel from "@/components/fortune-hub/MasterHubPanel";
 import AskHubPanel from "@/components/fortune-hub/AskHubPanel";
@@ -94,7 +95,7 @@ export default function LifeklinePage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const tab = params.get("tab");
-    if (tab === "bazi" || tab === "liuyao" || tab === "xiang" || tab === "master" || tab === "ask" || tab === "records") {
+    if (tab === "bazi" || tab === "liuyao" || tab === "tarot" || tab === "xiang" || tab === "master" || tab === "ask" || tab === "records") {
       setHubTab(tab as FortuneHubTab);
     }
     const cached = loadSessionResult<{
@@ -555,6 +556,7 @@ export default function LifeklinePage() {
       <FortuneHubNav active={hubTab} onChange={setHubTab} />
 
       {hubTab === "liuyao" && <LiuyaoHubPanel />}
+      {hubTab === "tarot" && <TarotHubPanel />}
       {hubTab === "xiang" && <XiangHubPanel />}
       {hubTab === "master" && <MasterHubPanel />}
       {hubTab === "ask" && <AskHubPanel />}

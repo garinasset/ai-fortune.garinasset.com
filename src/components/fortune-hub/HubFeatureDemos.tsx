@@ -2,6 +2,7 @@
 
 import HomeKlinePreview from "@/components/HomeKlinePreview";
 import LiuyaoDemoCard from "@/components/liuyao/LiuyaoDemoCard";
+import TarotDemoCard from "@/components/tarot/TarotDemoCard";
 import {
   DEMO_KLINE,
   DEMO_STATS,
@@ -30,6 +31,15 @@ export function LiuyaoHubDemo() {
     <DemoSection title="AI 六爻">
       <LiuyaoDemoCard />
     </DemoSection>
+  );
+}
+
+export function TarotHubDemo() {
+  return (
+    <div className="mt-4 border-t border-violet-500/20 pt-4">
+      <p className="mb-2 text-[11px] font-medium text-app-gold">塔罗 AI · 功能示例</p>
+      <TarotDemoCard dark />
+    </div>
   );
 }
 

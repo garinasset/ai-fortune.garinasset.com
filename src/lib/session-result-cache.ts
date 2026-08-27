@@ -1,7 +1,7 @@
 const TTL_MS = 60 * 1000;
 const PREFIX = "ai-fortune-session-";
 
-export type SessionResultKey = "lifekline" | "bazi" | "liuyao" | "xiang";
+export type SessionResultKey = "lifekline" | "bazi" | "liuyao" | "xiang" | "tarot";
 
 interface CachedEntry<T> {
   savedAt: number;

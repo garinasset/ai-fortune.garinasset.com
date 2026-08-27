@@ -1,7 +1,7 @@
 import type { KlineData } from "./types";
 import { getInviteLink, getInviteQrUrl } from "./user-store";
 
-import { BRAND_NAME, BRAND_SLOGAN } from "./brand";
+import { BRAND_NAME, BRAND_SLOGAN, BRAND_LOGO } from "./brand";
 
 export type PosterStyle = "classic" | "gold" | "jade";
 
@@ -18,7 +18,7 @@ export interface PosterData {
   userName?: string;
   /** 分享者用户 ID，用于报告二维码邀请注册 */
   shareUserId?: string;
-  type: "lifekline" | "liuyao" | "xiang" | "spirit-pet";
+  type: "lifekline" | "liuyao" | "xiang" | "spirit-pet" | "tarot";
   /** @deprecated use klineCharts */
   kline?: KlineData[];
   klineCharts?: KlineChartBlock[];
@@ -49,6 +49,9 @@ export interface PosterData {
   guaName?: string;
   guaDesc?: string;
   luck?: string;
+  /** 塔罗牌阵 */
+  tarotCards?: { name: string; nameEn?: string; positionLabel: string; reversed: boolean }[];
+  tarotTheme?: string;
 }
 
 
@@ -200,6 +203,9 @@ export async function generatePoster(data: PosterData, style: PosterStyle = "cla
   }
   if (data.type === "liuyao") {
     return generateLiuyaoPoster(data, style);
+  }
+  if (data.type === "tarot") {
+    return generateTarotPoster(data, style);
   }
 
   const charts: KlineChartBlock[] =
@@ -839,6 +845,192 @@ function drawHexagramOnCanvas(
   });
 
   return y + display.length * gap + 36;
+}
+
+function drawRichPosterHeader(
+  ctx: CanvasRenderingContext2D,
+  W: number,
+  data: PosterData,
+  theme: typeof STYLES.classic,
+) {
+  ctx.fillStyle = theme.gold;
+  ctx.font = "bold 22px PingFang SC, sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText(`${BRAND_LOGO} ${BRAND_NAME}`, W / 2, 52);
+
+  ctx.fillStyle = theme.muted;
+  ctx.font = "13px PingFang SC, sans-serif";
+  ctx.fillText(BRAND_SLOGAN, W / 2, 78);
+
+  ctx.fillStyle = theme.text;
+  ctx.font = "bold 22px PingFang SC, sans-serif";
+  ctx.fillText(data.title, W / 2, 118);
+
+  if (data.subtitle) {
+    ctx.fillStyle = theme.muted;
+    ctx.font = "13px PingFang SC, sans-serif";
+    const sub = data.subtitle.length > 36 ? `${data.subtitle.slice(0, 36)}…` : data.subtitle;
+    ctx.fillText(`所问：${sub}`, W / 2, 146);
+  }
+}
+
+function measureRichPosterHeaderHeight(data: PosterData): number {
+  return data.subtitle ? 168 : 138;
+}
+
+function drawMiniTarotCardOnCanvas(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  card: { name: string; nameEn?: string; positionLabel: string; reversed: boolean },
+  theme: typeof STYLES.classic,
+) {
+  ctx.save();
+  if (card.reversed) {
+    ctx.translate(x + w / 2, y + h / 2);
+    ctx.rotate(Math.PI);
+    ctx.translate(-(x + w / 2), -(y + h / 2));
+  }
+
+  roundRect(ctx, x, y, w, h, 8);
+  ctx.fillStyle = "#faf6ee";
+  ctx.fill();
+  ctx.strokeStyle = "#3d2914";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  roundRect(ctx, x + 4, y + 4, w - 8, h - 8, 6);
+  ctx.strokeStyle = `${theme.gold}99`;
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  ctx.fillStyle = "#e8e0d0";
+  roundRect(ctx, x + 8, y + 22, w - 16, h - 52, 4);
+  ctx.fill();
+
+  ctx.fillStyle = theme.accent;
+  ctx.font = "bold 28px serif";
+  ctx.textAlign = "center";
+  ctx.fillText("✦", x + w / 2, y + h / 2 - 4);
+
+  ctx.fillStyle = "#2c1810";
+  ctx.font = "bold 11px PingFang SC, serif";
+  ctx.fillText(card.name, x + w / 2, y + h - 28);
+  ctx.fillStyle = "#6b5d4f";
+  ctx.font = "9px PingFang SC, serif";
+  if (card.nameEn) ctx.fillText(card.nameEn, x + w / 2, y + h - 14);
+
+  ctx.restore();
+
+  ctx.fillStyle = theme.gold;
+  ctx.font = "bold 11px PingFang SC, sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText(card.positionLabel, x + w / 2, y + h + 16);
+  if (card.reversed) {
+    ctx.fillStyle = theme.muted;
+    ctx.font = "10px PingFang SC, sans-serif";
+    ctx.fillText("逆位", x + w / 2, y + h + 30);
+  }
+}
+
+async function generateTarotPoster(data: PosterData, style: PosterStyle): Promise<string> {
+  const W = POSTER_W;
+  const theme = STYLES[style];
+  const cardW = W - POSTER_PAD * 2;
+  const tarotCards = data.tarotCards ?? [];
+  const spreadH = tarotCards.length ? 200 : 0;
+
+  const measureCanvas = document.createElement("canvas");
+  measureCanvas.width = W;
+  measureCanvas.height = 10;
+  const measureCtx = measureCanvas.getContext("2d")!;
+  measureCtx.font = POSTER_BODY_FONT;
+
+  const summaryLines = data.summary.split("\n").filter(Boolean);
+  const summaryBodyH = measureModuleBodyHeight(measureCtx, summaryLines, cardW - POSTER_CARD_PAD * 2);
+  const summaryH = POSTER_CARD_PAD + POSTER_TITLE_H + POSTER_BODY_TOP_GAP + summaryBodyH + POSTER_CARD_PAD;
+
+  const themeBlockH = data.tarotTheme ? 36 : 0;
+
+  const H =
+    measureRichPosterHeaderHeight(data) +
+    spreadH +
+    themeBlockH +
+    POSTER_CARD_GAP +
+    summaryH +
+    POSTER_CARD_GAP +
+    POSTER_FOOTER_H;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext("2d")!;
+
+  const grad = ctx.createLinearGradient(0, 0, W, H);
+  grad.addColorStop(0, "#140a24");
+  grad.addColorStop(0.45, theme.bg[1]);
+  grad.addColorStop(1, theme.bg[2]);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+
+  drawRichPosterHeader(ctx, W, data, theme);
+  let y = measureRichPosterHeaderHeight(data);
+
+  if (tarotCards.length) {
+    roundRect(ctx, POSTER_PAD, y, cardW, spreadH - POSTER_CARD_GAP, 14);
+    ctx.fillStyle = "rgba(0,0,0,0.28)";
+    ctx.fill();
+    ctx.strokeStyle = `${theme.gold}55`;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    ctx.fillStyle = theme.gold;
+    ctx.font = "bold 15px PingFang SC, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("三牌阵 · 过去 / 现在 / 未来", W / 2, y + 28);
+
+    const miniW = 108;
+    const miniH = 148;
+    const gap = (cardW - miniW * 3) / 4;
+    tarotCards.forEach((c, i) => {
+      const cx = POSTER_PAD + gap + i * (miniW + gap);
+      drawMiniTarotCardOnCanvas(ctx, cx, y + 44, miniW, miniH, c, theme);
+    });
+    y += spreadH;
+  }
+
+  if (data.tarotTheme) {
+    ctx.fillStyle = theme.gold;
+    ctx.font = "bold 14px PingFang SC, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(`整体主题 · ${data.tarotTheme}`, W / 2, y + 22);
+    y += themeBlockH;
+  }
+
+  roundRect(ctx, POSTER_PAD, y, cardW, summaryH, 14);
+  ctx.fillStyle = "rgba(0,0,0,0.22)";
+  ctx.fill();
+  ctx.strokeStyle = `${theme.gold}33`;
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  ctx.fillStyle = theme.accent;
+  ctx.font = "bold 16px PingFang SC, sans-serif";
+  ctx.textAlign = "left";
+  ctx.fillText("AI 牌阵解读", POSTER_PAD + POSTER_CARD_PAD, y + 32);
+
+  ctx.fillStyle = theme.text;
+  ctx.font = POSTER_BODY_FONT;
+  let textY = y + 32 + POSTER_BODY_TOP_GAP + 8;
+  summaryLines.forEach((line) => {
+    textY = wrapText(ctx, line, POSTER_PAD + POSTER_CARD_PAD, textY, cardW - POSTER_CARD_PAD * 2, POSTER_BODY_LH, 24);
+    textY += POSTER_LINE_GAP;
+  });
+
+  await drawCompactPosterFooter(ctx, W, y + summaryH + POSTER_FOOTER_TOP_GAP, theme, data.shareUserId);
+  return canvas.toDataURL("image/png");
 }
 
 async function generateLiuyaoPoster(data: PosterData, style: PosterStyle): Promise<string> {

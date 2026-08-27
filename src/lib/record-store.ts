@@ -3,7 +3,7 @@ import { hashBirth } from "./fortune-chart";
 
 const RECORDS_KEY = "ai-fortune-calc-records";
 
-export type RecordType = "lifekline" | "bazi" | "aiAsk" | "master" | "xiang" | "liuyao";
+export type RecordType = "lifekline" | "bazi" | "aiAsk" | "master" | "xiang" | "liuyao" | "tarot";
 
 export interface CalcRecord {
   id: string;
@@ -32,6 +32,7 @@ const TYPE_LABELS: Record<RecordType, string> = {
   master: "问真人大师",
   xiang: "AI看相",
   liuyao: "AI六爻",
+  tarot: "塔罗AI",
 };
 
 export function getRecordTypeLabel(type: RecordType): string {

@@ -12,6 +12,7 @@ import {
   getMockBaziAnalysis,
   getMockImageAnalysis,
   getMockLiuyaoResult,
+  getMockTarotResult,
   getMockSpiritPetAnswer,
   simulateAnalysisDelay,
   MOCK_MODE,
@@ -34,6 +35,12 @@ interface LiuyaoAiResult {
   analysis: string;
   advice: string;
   luck: "大吉" | "吉" | "平" | "凶" | "大凶";
+}
+
+interface TarotAiResult {
+  analysis: string;
+  advice: string;
+  theme: string;
 }
 
 interface LifeKlineAiResult {
@@ -839,6 +846,31 @@ export async function analyzeLiuyaoWithAI(
 
   if (!result?.analysis || !result?.advice || !result?.luck) {
     throw new Error("AI 六爻返回内容不完整");
+  }
+
+  return result;
+}
+
+export async function analyzeTarotWithAI(
+  config: LLMConfig | undefined,
+  params: {
+    question: string;
+    spreadText: string;
+  },
+): Promise<TarotAiResult> {
+  if (isMockMode(config)) {
+    await simulateAnalysisDelay();
+    return getMockTarotResult(params);
+  }
+
+  const result = await completeJson<TarotAiResult>(
+    requireLLMConfig(config),
+    `你是精通韦特塔罗（Rider-Waite-Smith）的专业塔罗师。\n请严格输出 json，格式：{"analysis":"...","advice":"...","theme":"..."}。\nanalysis 280-420字，分3-5段，段间用\\n\\n分隔；分别解读过去/现在/未来三张牌的正逆位含义，并串联成完整叙事；theme 为 4-8 字整体主题；advice 50-100字给出可执行建议；输出中文。`,
+    params.spreadText + `\n\n用户问题：${params.question}`,
+  );
+
+  if (!result?.analysis || !result?.advice || !result?.theme) {
+    throw new Error("AI 塔罗返回内容不完整");
   }
 
   return result;
