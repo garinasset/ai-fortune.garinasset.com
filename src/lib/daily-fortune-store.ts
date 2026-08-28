@@ -1,9 +1,10 @@
 import type { BirthInfo, DailyFortuneGuide } from "./types";
 import { hashBirth } from "./fortune-chart";
 import { safeLocalGet, safeLocalSet } from "./safe-storage";
-import { getOrCreateUser, hasRegisteredAccount } from "./user-store";
+import { getOrCreateUser } from "./user-store";
 import { getPrimaryPerson } from "./person-store";
 import { isValidBirthInfo, normalizeBirthInfo } from "./birth-utils";
+import { generateDailyFortuneFromBazi } from "./daily-fortune";
 
 const STORAGE_KEY = "ai-fortune-daily-guide";
 
@@ -50,20 +51,7 @@ export function setCachedDailyFortune(
   writeAll(all);
 }
 
-export async function fetchDailyFortuneFromApi(birthInfo: BirthInfo): Promise<DailyFortuneGuide> {
-  const res = await fetch("/api/daily-fortune", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ birthInfo, date: todayDateKey() }),
-  });
-  const data = await res.json();
-  if (!res.ok) {
-    throw new Error(data.error ?? "今日运势生成失败");
-  }
-  return data.guide as DailyFortuneGuide;
-}
-
-/** 已登录用户每日至多请求一次 AI（不消耗灵丹） */
+/** 用户每日至多生成一次（本地八字推算，不消耗灵丹） */
 export async function ensureDailyFortuneLoaded(
   userId: string,
   birthInfo: BirthInfo,
@@ -71,15 +59,14 @@ export async function ensureDailyFortuneLoaded(
   const cached = getCachedDailyFortune(userId, birthInfo);
   if (cached) return cached;
 
-  const guide = await fetchDailyFortuneFromApi(birthInfo);
+  const guide = generateDailyFortuneFromBazi(birthInfo, todayDateKey());
   setCachedDailyFortune(userId, birthInfo, guide);
   return guide;
 }
 
-/** 登录后预拉取：需已注册账号 + 主测算人 */
-export function prefetchDailyFortuneForLoggedInUser(): void {
+/** 进入站点后预拉取：需已设置主测算人 */
+export function prefetchDailyFortune(): void {
   if (typeof window === "undefined") return;
-  if (!hasRegisteredAccount()) return;
 
   const primary = getPrimaryPerson();
   if (!primary?.birthInfo || !isValidBirthInfo(primary.birthInfo)) return;

@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { generateDailyFortuneWithAI } from "@/lib/llm";
-import { getServerLLMConfig } from "@/lib/server-config";
-import { calculateBazi, formatBaziPrompt } from "@/lib/bazi";
+import { generateDailyFortuneFromBazi } from "@/lib/daily-fortune";
 import { normalizeBirthInfo } from "@/lib/birth-utils";
 import type { BirthInfo } from "@/lib/types";
 
@@ -24,21 +22,9 @@ export async function POST(req: NextRequest) {
     }
 
     const today = date ?? new Date().toISOString().slice(0, 10);
+    const guide = generateDailyFortuneFromBazi(normalized, today);
 
-    let baziText: string | undefined;
-    try {
-      baziText = formatBaziPrompt(calculateBazi(normalized));
-    } catch {
-      baziText = undefined;
-    }
-
-    const guide = await generateDailyFortuneWithAI(getServerLLMConfig(), {
-      birthInfo: normalized,
-      baziText,
-      date: today,
-    });
-
-    return NextResponse.json({ guide, mock: false });
+    return NextResponse.json({ guide, local: true });
   } catch (e) {
     const message = e instanceof Error ? e.message : "服务器错误";
     return NextResponse.json({ error: message }, { status: 500 });

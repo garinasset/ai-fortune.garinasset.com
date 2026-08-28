@@ -1,9 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import type { BirthInfo, DailyFortuneGuide, SpiritPetProfile } from "@/lib/types";
-import { hasRegisteredAccount, getOrCreateUser } from "@/lib/user-store";
+import { getOrCreateUser } from "@/lib/user-store";
 import {
   ensureDailyFortuneLoaded,
   getCachedDailyFortune,
@@ -16,19 +15,13 @@ interface SpiritPetDailyAdviceProps {
   pet?: SpiritPetProfile | null;
 }
 
-/** 今日运势指引 · AI 每日生成（登录用户，不消耗灵丹） */
+/** 今日运势指引 · 每日生成（不消耗灵丹） */
 export default function SpiritPetDailyAdvice({ birth, pet }: SpiritPetDailyAdviceProps) {
   const [guide, setGuide] = useState<DailyFortuneGuide | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const loggedIn = hasRegisteredAccount();
 
   useEffect(() => {
-    if (!loggedIn) {
-      setGuide(null);
-      return;
-    }
-
     const user = getOrCreateUser();
     const cached = getCachedDailyFortune(user.id, birth, todayDateKey());
     if (cached) {
@@ -44,7 +37,7 @@ export default function SpiritPetDailyAdvice({ birth, pet }: SpiritPetDailyAdvic
         setError(err instanceof Error ? err.message : "今日运势加载失败");
       })
       .finally(() => setLoading(false));
-  }, [birth, loggedIn]);
+  }, [birth]);
 
   const subtitle = pet
     ? `${pet.fullName} 结合你的命盘 · ${todayDateKey()}`
@@ -58,24 +51,15 @@ export default function SpiritPetDailyAdvice({ birth, pet }: SpiritPetDailyAdvic
       subtitle={subtitle}
       className="mt-3 scroll-mt-4"
     >
-      {!loggedIn && (
-        <div className="rounded-xl border border-app-border/60 bg-app-bg/40 px-3 py-4 text-center">
-          <p className="caption text-app-muted">登录后可查看 AI 生成的今日运势与吉祥元素</p>
-          <Link href="/register" className="app-btn-gold mt-3 inline-block px-4 py-2 text-xs">
-            去登录 / 注册
-          </Link>
-        </div>
-      )}
-
-      {loggedIn && loading && (
+      {loading && (
         <p className="caption animate-pulse py-6 text-center text-app-accent">正在生成今日运势…</p>
       )}
 
-      {loggedIn && error && !loading && (
+      {error && !loading && (
         <p className="caption py-4 text-center text-red-400">{error}</p>
       )}
 
-      {loggedIn && guide && !loading && (
+      {guide && !loading && (
         <>
           <p className="mb-2 block-label text-app-gold">今日运势</p>
           <div className="grid grid-cols-2 gap-2">
