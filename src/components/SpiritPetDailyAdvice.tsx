@@ -1,44 +1,120 @@
 "use client";
 
-import { useMemo } from "react";
-import type { BirthInfo, SpiritPetProfile } from "@/lib/types";
-import { generateSpiritPetAdvice } from "@/lib/spirit-pet";
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import type { BirthInfo, DailyFortuneGuide, SpiritPetProfile } from "@/lib/types";
+import { hasRegisteredAccount, getOrCreateUser } from "@/lib/user-store";
+import {
+  ensureDailyFortuneLoaded,
+  getCachedDailyFortune,
+  todayDateKey,
+} from "@/lib/daily-fortune-store";
 import SectionCard from "@/components/ui/SectionCard";
 
 interface SpiritPetDailyAdviceProps {
-  pet: SpiritPetProfile;
   birth: BirthInfo;
+  pet?: SpiritPetProfile | null;
 }
 
-/** 今日运势指引 · 命盘解读（穿搭 / 吉位 / 事业等） */
-export default function SpiritPetDailyAdvice({ pet, birth }: SpiritPetDailyAdviceProps) {
-  const advice = useMemo(() => generateSpiritPetAdvice(birth, pet, "day"), [birth, pet]);
+/** 今日运势指引 · AI 每日生成（登录用户，不消耗灵丹） */
+export default function SpiritPetDailyAdvice({ birth, pet }: SpiritPetDailyAdviceProps) {
+  const [guide, setGuide] = useState<DailyFortuneGuide | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const loggedIn = hasRegisteredAccount();
+
+  useEffect(() => {
+    if (!loggedIn) {
+      setGuide(null);
+      return;
+    }
+
+    const user = getOrCreateUser();
+    const cached = getCachedDailyFortune(user.id, birth, todayDateKey());
+    if (cached) {
+      setGuide(cached);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    ensureDailyFortuneLoaded(user.id, birth)
+      .then((data) => setGuide(data))
+      .catch((err) => {
+        setError(err instanceof Error ? err.message : "今日运势加载失败");
+      })
+      .finally(() => setLoading(false));
+  }, [birth, loggedIn]);
+
+  const subtitle = pet
+    ? `${pet.fullName} 结合你的命盘 · ${todayDateKey()}`
+    : `结合主测算人命盘 · ${todayDateKey()}`;
 
   return (
     <SectionCard
       id="daily-fortune-guide"
       variant="fortune"
       title="今日运势指引"
-      subtitle={`${pet.fullName} 结合你的命盘 · 穿搭吉位事业建议`}
+      subtitle={subtitle}
       className="mt-3 scroll-mt-4"
     >
-      <div className="rounded-xl border border-app-gold/25 bg-gradient-to-br from-app-gold/8 to-transparent p-3.5">
-        <p className="body-text whitespace-pre-line leading-relaxed">
-          {pet.emoji} {advice.summary}
-        </p>
-      </div>
+      {!loggedIn && (
+        <div className="rounded-xl border border-app-border/60 bg-app-bg/40 px-3 py-4 text-center">
+          <p className="caption text-app-muted">登录后可查看 AI 生成的今日运势与吉祥元素</p>
+          <Link href="/register" className="app-btn-gold mt-3 inline-block px-4 py-2 text-xs">
+            去登录 / 注册
+          </Link>
+        </div>
+      )}
 
-      <div className="mt-3 grid grid-cols-2 gap-2">
-        {advice.sections.map((sec) => (
-          <div
-            key={sec.label}
-            className="rounded-xl border border-app-border/60 bg-app-bg/40 px-3 py-2.5 text-left"
-          >
-            <p className="block-label text-app-gold">{sec.label}</p>
-            <p className="caption mt-1 leading-snug text-app-text">{sec.text}</p>
+      {loggedIn && loading && (
+        <p className="caption animate-pulse py-6 text-center text-app-accent">正在生成今日运势…</p>
+      )}
+
+      {loggedIn && error && !loading && (
+        <p className="caption py-4 text-center text-red-400">{error}</p>
+      )}
+
+      {loggedIn && guide && !loading && (
+        <>
+          <p className="mb-2 block-label text-app-gold">今日运势</p>
+          <div className="grid grid-cols-2 gap-2">
+            {guide.dimensions.map((dim) => (
+              <div
+                key={dim.key}
+                className="rounded-xl border border-app-border/60 bg-app-bg/40 px-3 py-2.5 text-left"
+              >
+                <div className="mb-1 flex items-center justify-between gap-2">
+                  <p className="block-label text-app-gold">{dim.label}</p>
+                  <span className="text-xs font-bold text-app-accent">{dim.score}分</span>
+                </div>
+                <div className="mb-1.5 h-1 overflow-hidden rounded-full bg-app-border">
+                  <div className="h-full rounded-full bg-app-accent" style={{ width: `${dim.score}%` }} />
+                </div>
+                <p className="caption leading-snug text-app-text">{dim.text}</p>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+
+          <p className="mb-2 mt-4 block-label text-app-gold">吉祥元素</p>
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { label: "幸运颜色", value: guide.lucky.color },
+              { label: "幸运数字", value: guide.lucky.number },
+              { label: "吉位", value: guide.lucky.direction },
+              { label: "吉时", value: guide.lucky.time },
+            ].map(({ label, value }) => (
+              <div
+                key={label}
+                className="rounded-xl border border-app-gold/25 bg-app-gold/8 px-3 py-2.5"
+              >
+                <p className="block-label text-app-muted">{label}</p>
+                <p className="caption mt-1 font-medium text-app-text">{value}</p>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
     </SectionCard>
   );
 }

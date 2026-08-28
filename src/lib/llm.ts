@@ -1,4 +1,4 @@
-import type { AnalysisResult, LLMConfig, BaziResult, BirthInfo, KlineData, OverallAnalysis } from "./types";
+import type { AnalysisResult, LLMConfig, BaziResult, BirthInfo, KlineData, OverallAnalysis, DailyFortuneGuide, DailyFortuneDimensionKey } from "./types";
 import {
   generateForwardYearsKline,
   generateFullLifeKline,
@@ -17,6 +17,7 @@ import {
   getMockLiuyaoResult,
   getMockTarotResult,
   getMockSpiritPetAnswer,
+  getMockDailyFortune,
   simulateAnalysisDelay,
   MOCK_MODE,
 } from "./mock-analysis";
@@ -930,6 +931,69 @@ export async function analyzeBaziFlow(
     throw new Error("AI 返回内容不完整");
   }
   return { analysis: result.analysis.trim(), mock: false };
+}
+
+const DAILY_FORTUNE_KEYS: DailyFortuneDimensionKey[] = [
+  "career", "wealth", "social", "health", "emotion", "energy",
+];
+const DAILY_FORTUNE_LABELS: Record<DailyFortuneDimensionKey, string> = {
+  career: "事业",
+  wealth: "财富",
+  social: "人际",
+  health: "健康",
+  emotion: "情绪",
+  energy: "精力",
+};
+
+function normalizeDailyFortune(raw: DailyFortuneGuide, date: string): DailyFortuneGuide {
+  const byKey = new Map((raw.dimensions ?? []).map((d) => [d.key, d]));
+  const dimensions = DAILY_FORTUNE_KEYS.map((key) => {
+    const item = byKey.get(key);
+    return {
+      key,
+      label: DAILY_FORTUNE_LABELS[key],
+      score: clamp(1, 100, Number(item?.score ?? 60)),
+      text: String(item?.text ?? "").trim() || "运势平稳，顺势而为即可。",
+    };
+  });
+  const lucky = raw.lucky ?? { color: "", number: "", direction: "", time: "" };
+  return {
+    date,
+    dimensions,
+    lucky: {
+      color: String(lucky.color ?? "").trim() || "藏青",
+      number: String(lucky.number ?? "").trim() || "6",
+      direction: String(lucky.direction ?? "").trim() || "东南",
+      time: String(lucky.time ?? "").trim() || "9:00-11:00",
+    },
+    generatedAt: raw.generatedAt || new Date().toISOString(),
+  };
+}
+
+export async function generateDailyFortuneWithAI(
+  config: LLMConfig | undefined,
+  params: { birthInfo: BirthInfo; baziText?: string; date: string },
+): Promise<DailyFortuneGuide> {
+  if (isMockMode(config)) {
+    await simulateAnalysisDelay();
+    return getMockDailyFortune(params.date, params.birthInfo);
+  }
+
+  const birthText = formatBirthInfoForPrompt(params.birthInfo);
+  const baziNote = params.baziText ? `\n八字参考：${params.baziText}` : "";
+
+  const result = await completeJson<DailyFortuneGuide>(
+    requireLLMConfig(config),
+    "你是一位精通子平八字的命理师。请严格输出 json（json_object），不要输出额外文本。",
+    `请根据用户生辰与今日日期（${params.date}），生成「今日运势指引」。\n用户信息：${birthText}${baziNote}\n要求：\n1) dimensions 包含 6 项，key 依次为 career,wealth,social,health,emotion,energy；label 对应 事业,财富,人际,健康,情绪,精力。\n2) 每项含 score（1-100 整数）与 text（40-80 字，具体可执行）。\n3) lucky 含 color（幸运颜色）、number（幸运数字，可 1-2 个）、direction（吉位）、time（吉时，如 9:00-11:00）。\n4) 输出中文，紧凑 json。\n示例：{"dimensions":[{"key":"career","label":"事业","score":72,"text":"..."}],"lucky":{"color":"藏青","number":"3、8","direction":"东南","time":"9:00-11:00"}}`,
+    { maxTokens: 2500, temperature: 0.65 },
+  );
+
+  if (!result?.dimensions?.length || !result.lucky) {
+    throw new Error("AI 今日运势返回内容不完整");
+  }
+
+  return normalizeDailyFortune(result, params.date);
 }
 
 async function completeJson<T>(

@@ -1,7 +1,7 @@
 import type { BirthInfo, SpiritPetAdvice, SpiritPetProfile } from "./types";
 import { getEffectiveBirthInfo, normalizeBirthInfo, isValidBirthInfo } from "./birth-store";
-import { getPrimaryPerson, getActivePersonId, getPersonDisplayName } from "./person-store";
-import { getPersonKey, getOrCreateSpiritPet, generateSpiritPetAdvice } from "./spirit-pet";
+import { getPrimaryPerson, getPersonDisplayName } from "./person-store";
+import { getSpiritPetPersonKey, getOrCreateSpiritPet, generateSpiritPetAdvice } from "./spirit-pet";
 
 export type SpiritPetPagePhase = "initializing" | "onboarding" | "claim" | "generating" | "companion";
 
@@ -35,7 +35,10 @@ export function resolveSpiritPetPageState(): SpiritPetPageSnapshot {
     }
 
     const birth = normalizeBirthInfo(raw);
-    const personKey = getPersonKey(getActivePersonId(), birth);
+    const personKey = getSpiritPetPersonKey();
+    if (!personKey) {
+      return { ...EMPTY, phase: "onboarding" };
+    }
     const profile = getOrCreateSpiritPet(personKey, birth);
 
     if (!profile?.claimed) {

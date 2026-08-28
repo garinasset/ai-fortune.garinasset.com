@@ -257,14 +257,18 @@ function AskPageContent() {
         </Link>
       )}
 
-      {pet && normalizedBirth && personKey && (
+      {normalizedBirth && (
         <section className="page-section pb-4">
-          <SpiritPetMatchFriendsButton unlocked={level >= 2} />
-          <SpiritPetFortuneStick pet={pet} personKey={personKey} birth={normalizedBirth} />
-          <div className="mt-3">
-            <BoostFortuneButton />
-          </div>
-          <SpiritPetDailyAdvice pet={pet} birth={normalizedBirth} />
+          <SpiritPetDailyAdvice birth={normalizedBirth} pet={pet} />
+          {pet && personKey && (
+            <>
+              <SpiritPetMatchFriendsButton unlocked={level >= 2} />
+              <SpiritPetFortuneStick pet={pet} personKey={personKey} birth={normalizedBirth} />
+              <div className="mt-3">
+                <BoostFortuneButton />
+              </div>
+            </>
+          )}
         </section>
       )}
     </>

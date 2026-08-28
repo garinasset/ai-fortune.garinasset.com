@@ -251,6 +251,35 @@ export interface SpiritPetAdvice {
   petGreeting?: string;
 }
 
+export type DailyFortuneDimensionKey =
+  | "career"
+  | "wealth"
+  | "social"
+  | "health"
+  | "emotion"
+  | "energy";
+
+export interface DailyFortuneDimension {
+  key: DailyFortuneDimensionKey;
+  label: string;
+  score: number;
+  text: string;
+}
+
+export interface DailyFortuneLuckyElements {
+  color: string;
+  number: string;
+  direction: string;
+  time: string;
+}
+
+export interface DailyFortuneGuide {
+  date: string;
+  dimensions: DailyFortuneDimension[];
+  lucky: DailyFortuneLuckyElements;
+  generatedAt: string;
+}
+
 export interface CommunityComment {
   id: string;
   postId: string;

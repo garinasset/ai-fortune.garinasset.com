@@ -1,9 +1,10 @@
 import type { BirthInfo, SpiritPetAdvice, SpiritPetPeriod, SpiritPetProfile, SpiritPetCompanionNeed } from "./types";
 import { hashBirth } from "./fortune-chart";
 import { calculateBazi } from "./bazi";
-import { normalizeBirthInfo } from "./birth-utils";
+import { normalizeBirthInfo, isValidBirthInfo } from "./birth-utils";
 import { normalizePetGrowth } from "./spirit-pet-growth";
 import { getSpiritBeastAsset } from "./spirit-beast-assets";
+import { getActivePersonId, getPrimaryPerson } from "./person-store";
 
 const PETS_KEY = "ai-fortune-spirit-pets";
 const SWAPS_KEY = "ai-fortune-pet-swaps";
@@ -255,6 +256,53 @@ function savePet(profile: SpiritPetProfile) {
 
 export function getPersonKey(personId: string | null, info: BirthInfo): string {
   return personId ?? `birth-${hashBirth(info)}`;
+}
+
+/** 灵宠归属 key：始终绑定主测算人，不受当前测算对象切换影响 */
+export function getSpiritPetPersonKey(): string | null {
+  const primary = getPrimaryPerson();
+  if (!primary?.birthInfo) return null;
+  try {
+    const birth = normalizeBirthInfo(primary.birthInfo);
+    if (!isValidBirthInfo(birth)) return null;
+    const primaryKey = getPersonKey(primary.id, birth);
+    migrateLegacySpiritPetKey(primaryKey, birth);
+    return primaryKey;
+  } catch {
+    return null;
+  }
+}
+
+/** 旧版误将灵宠绑到「当前测算人」时，迁移回主测算人 */
+function migrateLegacySpiritPetKey(primaryKey: string, birth: BirthInfo): void {
+  if (typeof window === "undefined") return;
+  const pets = getStoredPets();
+  if (pets[primaryKey]?.claimed) return;
+
+  const activeId = getActivePersonId();
+  if (!activeId) return;
+
+  const primary = getPrimaryPerson();
+  if (!primary || activeId === primary.id) return;
+
+  const legacyKey = getPersonKey(activeId, birth);
+  if (legacyKey === primaryKey) return;
+
+  const legacy = pets[legacyKey];
+  if (!legacy?.claimed) return;
+
+  const migrated = normalizeStoredPet({ ...legacy, personKey: primaryKey }, primaryKey, birth);
+  savePet(migrated);
+  const updated = getStoredPets();
+  delete updated[legacyKey];
+  localStorage.setItem(PETS_KEY, JSON.stringify(updated));
+
+  const swaps = getSwapCounts();
+  if (swaps[legacyKey] != null && swaps[primaryKey] == null) {
+    swaps[primaryKey] = swaps[legacyKey];
+    delete swaps[legacyKey];
+    saveSwapCounts(swaps);
+  }
 }
 
 function safeCalculateBazi(info: BirthInfo) {

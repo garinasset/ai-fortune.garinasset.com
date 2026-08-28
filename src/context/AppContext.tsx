@@ -3,8 +3,9 @@
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { translations, type Locale, type Theme, type Translations } from "@/lib/i18n";
 import type { UserProfile } from "@/lib/types";
-import { getOrCreateUser } from "@/lib/user-store";
+import { getOrCreateUser, hasRegisteredAccount } from "@/lib/user-store";
 import { registerReferral } from "@/lib/community-store";
+import { prefetchDailyFortuneForLoggedInUser } from "@/lib/daily-fortune-store";
 import {
   DEFAULT_UI_THEME,
   UI_THEME_STORAGE_KEY,
@@ -101,6 +102,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         try { registerReferral(ref, u.id); } catch { /* ignore */ }
       }
       setUser(u);
+      prefetchDailyFortuneForLoggedInUser();
     } catch (err) {
       console.error("init user failed", err);
     }
@@ -135,7 +137,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const refreshUser = useCallback(() => {
-    try { setUser(getOrCreateUser()); } catch { /* ignore */ }
+    try {
+      setUser(getOrCreateUser());
+      prefetchDailyFortuneForLoggedInUser();
+    } catch { /* ignore */ }
   }, []);
 
   const t = translations[locale];

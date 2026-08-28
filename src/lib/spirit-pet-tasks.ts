@@ -1,8 +1,8 @@
 import type { SpiritPetProfile } from "./types";
 import { safeLocalGet, safeLocalSet } from "./safe-storage";
 import { SPIRIT_POWER_REWARDS, type SpiritPowerAction, applySpiritPower } from "./spirit-pet-growth";
-import { getPrimaryPerson, getActivePersonId } from "./person-store";
-import { getPersonKey, getOrCreateSpiritPet, updateSpiritPet } from "./spirit-pet";
+import { getPrimaryPerson } from "./person-store";
+import { getSpiritPetPersonKey, getOrCreateSpiritPet, updateSpiritPet } from "./spirit-pet";
 import { normalizeBirthInfo, isValidBirthInfo } from "./birth-utils";
 
 const TASKS_KEY = "ai-fortune-spirit-daily-tasks";
@@ -28,10 +28,7 @@ function todayKey(): string {
 }
 
 function getPersonKeyOrNull(): string | null {
-  const primary = getPrimaryPerson();
-  if (!primary?.birthInfo || !isValidBirthInfo(primary.birthInfo)) return null;
-  const b = normalizeBirthInfo(primary.birthInfo);
-  return getPersonKey(getActivePersonId(), b);
+  return getSpiritPetPersonKey();
 }
 
 function loadAllTasks(): Record<string, DailyTaskState & { date: string }> {

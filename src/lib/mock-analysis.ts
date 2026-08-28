@@ -286,3 +286,39 @@ export function getMockLiuyaoResult(params: {
     luck,
   };
 }
+
+const DAILY_FORTUNE_LABELS = ["事业", "财富", "人际", "健康", "情绪", "精力"] as const;
+const DAILY_FORTUNE_KEYS = ["career", "wealth", "social", "health", "emotion", "energy"] as const;
+
+export function getMockDailyFortune(date: string, birthInfo?: { year?: number }): import("./types").DailyFortuneGuide {
+  const seed = hashString(date + String(birthInfo?.year ?? 1990));
+  const dirs = ["东方", "南方", "西方", "北方", "东南", "西北"];
+  const colors = ["朱红", "墨绿", "金色", "藏青", "紫色", "米白"];
+  const times = ["7:00-9:00", "9:00-11:00", "11:00-13:00", "13:00-15:00", "15:00-17:00"];
+
+  const texts: Record<string, string[]> = {
+    career: ["宜推进关键事项，上午效率较高。", "稳扎稳打，不宜冒进扩张。", "贵人暗助，适合沟通协作。"],
+    wealth: ["正财平稳，小额进账可期。", "宜守不宜攻，控制非必要开支。", "偏财一般，专注本职更稳妥。"],
+    social: ["人缘较佳，适合联络旧友。", "注意言辞，避免误会。", "团队合作顺畅，可多倾听。"],
+    health: ["作息规律，注意肩颈放松。", "饮食清淡，晚间宜早睡。", "适度运动，避免过劳。"],
+    emotion: ["心态平和，宜表达真实感受。", "少思多动，转移注意力。", "情绪稳定，适合静心阅读。"],
+    energy: ["上午精力旺盛，安排要事。", "午后略疲，可短休恢复。", "整体中等，分段完成任务。"],
+  };
+
+  return {
+    date,
+    generatedAt: new Date().toISOString(),
+    dimensions: DAILY_FORTUNE_KEYS.map((key, i) => ({
+      key,
+      label: DAILY_FORTUNE_LABELS[i]!,
+      score: 55 + ((seed + i * 17) % 40),
+      text: pick(texts[key] ?? texts.career!, seed + i),
+    })),
+    lucky: {
+      color: pick(colors, seed),
+      number: String((seed % 9) + 1),
+      direction: pick(dirs, seed + 2),
+      time: pick(times, seed + 4),
+    },
+  };
+}

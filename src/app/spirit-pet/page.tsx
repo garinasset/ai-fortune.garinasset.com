@@ -10,7 +10,7 @@ import { normalizeLevel, getStageForLevel, formatLevelBadge, getCumulativeAbilit
 import {
   generateSpiritPetAdvice,
   getOrCreateSpiritPet,
-  getPersonKey,
+  getSpiritPetPersonKey,
   claimSpiritPet,
   generateSpiritPetWelcome,
   getRemainingSwaps,
@@ -20,7 +20,7 @@ import {
 } from "@/lib/spirit-pet";
 import type { SpiritPetAdvice, SpiritPetProfile, BirthInfo } from "@/lib/types";
 import { normalizeBirthInfo } from "@/lib/birth-store";
-import { addPrimaryPerson, getPrimaryPerson, getActivePersonId } from "@/lib/person-store";
+import { addPrimaryPerson, getPrimaryPerson } from "@/lib/person-store";
 import { updateUser } from "@/lib/user-store";
 import { useApp } from "@/context/AppContext";
 import SpiritPetDisplay from "@/components/SpiritPetDisplay";
@@ -159,7 +159,8 @@ function SpiritPetPageContent() {
         if (!getPrimaryPerson()) addPrimaryPerson(info);
         const primary = getPrimaryPerson();
         const b = normalizeBirthInfo(primary?.birthInfo ?? info);
-        const pk = getPersonKey(getActivePersonId(), b);
+        const pk = getSpiritPetPersonKey();
+        if (!pk) throw new Error("无法绑定主测算人");
         const profile = claimSpiritPet(pk, b);
         setBirth(b);
         setPersonKey(pk);

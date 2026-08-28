@@ -10,7 +10,9 @@ import { getEffectiveBirthInfo, loadBirthInfo } from "@/lib/birth-store";
 import { useApp } from "@/context/AppContext";
 import PaywallModal from "@/components/PaywallModal";
 import PrimaryPersonModal from "@/components/PrimaryPersonModal";
-import { ensurePrimaryPersonBeforeCalc, getPersonDisplayName } from "@/lib/person-store";
+import { ensurePrimaryPersonBeforeCalc, getPersonDisplayName, getPrimaryPerson } from "@/lib/person-store";
+import { hashBirth } from "@/lib/fortune-chart";
+import { isValidBirthInfo, normalizeBirthInfo } from "@/lib/birth-utils";
 import { grantSpiritPowerForTask } from "@/lib/spirit-pet-tasks";
 import { getSpiritAbilityPrompt } from "@/lib/spirit-pet-ask";
 import TypewriterText from "@/components/TypewriterText";
@@ -77,6 +79,11 @@ export default function SpiritPetChatPanel({
       setBirthInfo(birthInfoProp);
       return;
     }
+    const primary = getPrimaryPerson();
+    if (primary?.birthInfo && isValidBirthInfo(primary.birthInfo)) {
+      setBirthInfo(normalizeBirthInfo(primary.birthInfo));
+      return;
+    }
     setBirthInfo(getEffectiveBirthInfo() ?? loadBirthInfo());
   }, [birthInfoProp]);
 
@@ -133,7 +140,11 @@ export default function SpiritPetChatPanel({
 
       let ans = "";
       try {
-        const measurementContext = formatFortuneContextForPrompt(loadFortuneMeasurementContext());
+        const ctx = loadFortuneMeasurementContext();
+        const measurementContext =
+          ctx?.birthInfo && birthInfo && hashBirth(ctx.birthInfo) === hashBirth(birthInfo)
+            ? formatFortuneContextForPrompt(ctx)
+            : undefined;
         const res = await fetch("/api/ask", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
