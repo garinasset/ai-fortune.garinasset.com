@@ -3,7 +3,7 @@ import { generateMonthlyKlineWithAI, isAIJsonParseError } from "@/lib/llm";
 import { getServerLLMConfig } from "@/lib/server-config";
 import { calculateBazi, formatBaziPrompt } from "@/lib/bazi";
 import { normalizeBirthInfo } from "@/lib/birth-utils";
-import { annotateKlineExtremes, generateMonthlyKline } from "@/lib/fortune-chart";
+import { annotateKlineExtremes, generateMonthlyKline, normalizeYearAnchor } from "@/lib/fortune-chart";
 import type { BirthInfo } from "@/lib/types";
 
 export async function POST(req: NextRequest) {
@@ -25,11 +25,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "出生信息格式无效" }, { status: 400 });
     }
 
-    if (yearAnchor) {
-      const kline = generateMonthlyKline(normalized, year, yearAnchor);
-      return NextResponse.json({ kline: annotateKlineExtremes(kline) });
-    }
-
     let baziText: string | undefined;
     try {
       const bazi = calculateBazi(normalized);
@@ -37,6 +32,16 @@ export async function POST(req: NextRequest) {
     } catch (e) {
       const message = e instanceof Error ? e.message : "出生信息无效";
       return NextResponse.json({ error: message }, { status: 500 });
+    }
+
+    if (yearAnchor) {
+      const kline = await generateMonthlyKlineWithAI(getServerLLMConfig(), {
+        birthInfo: normalized,
+        year,
+        baziText,
+        yearAnchor: normalizeYearAnchor(yearAnchor),
+      });
+      return NextResponse.json({ kline: annotateKlineExtremes(kline) });
     }
 
     const kline = await generateMonthlyKlineWithAI(getServerLLMConfig(), {

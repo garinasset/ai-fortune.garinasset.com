@@ -201,6 +201,27 @@ function roundK(v: number): number {
   return Math.round(v * 10) / 10;
 }
 
+/** 修正 AI 年 K 高低点，确保包含开收价 */
+export function normalizeYearAnchor(anchor: YearKlineAnchor): YearKlineAnchor {
+  const lo = Math.min(anchor.open, anchor.close, anchor.low);
+  const hi = Math.max(anchor.open, anchor.close, anchor.high);
+  return {
+    open: anchor.open,
+    close: anchor.close,
+    low: lo,
+    high: Math.max(hi, lo + 0.5),
+  };
+}
+
+export function yearBarToAnchor(bar: KlineData): YearKlineAnchor {
+  return normalizeYearAnchor({
+    open: bar.open,
+    close: bar.close,
+    high: bar.high,
+    low: bar.low,
+  });
+}
+
 /** 将月度 K 线约束到年 K 的开收与高低区间，保证涨跌方向一致 */
 export function alignMonthlyKlineToYearBar(
   rows: KlineData[],
@@ -279,7 +300,7 @@ export function generateMonthlyKline(
   anchor?: YearKlineAnchor,
 ): KlineData[] {
   const solarInfo = resolveSolarInfo(info);
-  const yearBar = resolveYearAnchor(info, targetYear, anchor);
+  const yearBar = normalizeYearAnchor(resolveYearAnchor(info, targetYear, anchor));
   const seed = hashBirth(info) + targetYear * 100;
   const rand = seededRandom(seed);
   const age = targetYear - solarInfo.year;

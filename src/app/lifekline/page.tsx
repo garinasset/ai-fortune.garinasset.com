@@ -9,9 +9,8 @@ import PaywallModal from "@/components/PaywallModal";
 import OverallOverviewPanel from "@/components/OverallOverviewPanel";
 import {
   generateYearAnalysis,
-  sliceForwardPeriodFromFull,
-  generateMonthlyKline,
   type YearKlineAnchor,
+  yearBarToAnchor,
 } from "@/lib/fortune-chart";
 import { calculateBazi } from "@/lib/bazi";
 import { canUse, incrementUsage, addHistory } from "@/lib/user-store";
@@ -62,6 +61,7 @@ export default function LifeklinePage() {
   const [bazi, setBazi] = useState<BaziResult | null>(null);
   const [overall, setOverall] = useState<OverallAnalysis | null>(null);
   const [selectedYear, setSelectedYear] = useState<YearAnalysis | null>(null);
+  const [selectedYearBar, setSelectedYearBar] = useState<KlineData | null>(null);
   const [selectedIndex, setSelectedIndex] = useState<number | undefined>();
   const [paywall, setPaywall] = useState(false);
   const [primaryModal, setPrimaryModal] = useState(false);
@@ -133,7 +133,6 @@ export default function LifeklinePage() {
     }
     const cached = periodCacheRef.current.get(lifeYears);
     if (cached?.length) return cached;
-    if (fullKline.length >= 101) return sliceForwardPeriodFromFull(fullKline, lifeYears);
     return [];
   // cacheVersion triggers re-read of periodCacheRef
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -157,20 +156,11 @@ export default function LifeklinePage() {
     year: number,
     yearBar?: KlineData,
   ) => {
-    if (yearBar) {
-      const anchor: YearKlineAnchor = {
-        open: yearBar.open,
-        close: yearBar.close,
-        high: yearBar.high,
-        low: yearBar.low,
-      };
-      return generateMonthlyKline(info, year, anchor);
-    }
-
+    const yearAnchor: YearKlineAnchor | undefined = yearBar ? yearBarToAnchor(yearBar) : undefined;
     const res = await fetch("/api/chart/monthly", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ birthInfo: info, year }),
+      body: JSON.stringify({ birthInfo: info, year, yearAnchor }),
     });
     const data = await res.json();
     if (!res.ok) {
@@ -250,50 +240,12 @@ export default function LifeklinePage() {
     bumpCache();
   }, [bumpCache]);
 
-  const cachePeriodSlicesFromFull = useCallback((full: KlineData[], activeYears: number) => {
-    periodCacheRef.current.set(100, full);
-    for (const y of [3, 5, 10, 20]) {
-      if (y !== activeYears && y !== 1) {
-        periodCacheRef.current.set(y, sliceForwardPeriodFromFull(full, y));
-      }
-    }
-    if (activeYears !== 1 && activeYears < 100) {
-      periodCacheRef.current.set(activeYears, sliceForwardPeriodFromFull(full, activeYears));
-    }
-    bumpCache();
-  }, [bumpCache]);
-
   const requestLocalFullLife = useCallback(async (info: BirthInfo) => {
     const data = await requestLifeKline(info, 100, { scope: "fullLifeLocal" });
     return data.fullKline;
   }, [requestLifeKline]);
 
   const loadPeriodForYears = useCallback(async (info: BirthInfo, years: number) => {
-    if (years === 1) {
-      const year = new Date().getFullYear();
-      const cached = monthlyCacheRef.current.get(year);
-      if (cached?.length) {
-        setCurrentYearMonthly(cached);
-        return;
-      }
-      setPeriodLoading(true);
-      try {
-        setError(null);
-        const yearBar =
-          fullKline.find((r) => r.year === year) ??
-          periodCacheRef.current.get(5)?.find((r) => r.year === year) ??
-          periodCacheRef.current.get(10)?.find((r) => r.year === year);
-        const monthly = await requestMonthlyKline(info, year, yearBar);
-        monthlyCacheRef.current.set(year, monthly);
-        setCurrentYearMonthly(monthly);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "月度K线生成失败，请稍后重试");
-      } finally {
-        setPeriodLoading(false);
-      }
-      return;
-    }
-
     if (years >= 100) {
       if (fullLifeLoadedRef.current || fullKline.length >= 101) return;
       setPeriodLoading(true);
@@ -301,7 +253,8 @@ export default function LifeklinePage() {
         setError(null);
         const kline = await requestLocalFullLife(info);
         applyFullLife(kline);
-        cachePeriodSlicesFromFull(kline, 100);
+        periodCacheRef.current.set(100, kline);
+        bumpCache();
       } catch (err) {
         setError(err instanceof Error ? err.message : "人生K线生成失败，请稍后重试");
       } finally {
@@ -310,33 +263,48 @@ export default function LifeklinePage() {
       return;
     }
 
-    const cached = periodCacheRef.current.get(years);
-    if (cached?.length) return;
-
-    if (fullKline.length >= 101) {
-      if (years >= 100) {
-        periodCacheRef.current.set(100, fullKline);
-      } else if (years !== 1) {
-        periodCacheRef.current.set(years, sliceForwardPeriodFromFull(fullKline, years));
+    if (years === 1) {
+      const year = new Date().getFullYear();
+      const cached = periodCacheRef.current.get(1);
+      if (cached?.length && cached[0]?.isMonthly) {
+        setCurrentYearMonthly(cached);
+        return;
       }
-      bumpCache();
+      setPeriodLoading(true);
+      try {
+        setError(null);
+        const lifeData = await requestLifeKline(info, 1);
+        periodCacheRef.current.set(1, lifeData.periodKline);
+        const yearBar =
+          lifeData.periodKline.find((r) => r.year === year) ??
+          periodCacheRef.current.get(10)?.find((r) => r.year === year);
+        const monthly = await requestMonthlyKline(info, year, yearBar);
+        monthlyCacheRef.current.set(year, monthly);
+        periodCacheRef.current.set(1, monthly);
+        setCurrentYearMonthly(monthly);
+        bumpCache();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "月度K线生成失败，请稍后重试");
+      } finally {
+        setPeriodLoading(false);
+      }
       return;
     }
 
-    if (years === 1 || years >= 100) return;
+    if (periodCacheRef.current.get(years)?.length) return;
 
     setPeriodLoading(true);
     try {
       setError(null);
-      const full = await requestLocalFullLife(info);
-      applyFullLife(full);
-      cachePeriodSlicesFromFull(full, years);
+      const lifeData = await requestLifeKline(info, years);
+      periodCacheRef.current.set(years, lifeData.periodKline);
+      bumpCache();
     } catch (err) {
       setError(err instanceof Error ? err.message : "人生K线生成失败，请稍后重试");
     } finally {
       setPeriodLoading(false);
     }
-  }, [requestLifeKline, requestMonthlyKline, requestLocalFullLife, applyFullLife, cachePeriodSlicesFromFull, fullKline, bumpCache]);
+  }, [requestLifeKline, requestMonthlyKline, requestLocalFullLife, applyFullLife, bumpCache, fullKline.length]);
 
   useEffect(() => {
     if (phase !== "generating" || !birthInfo) return;
@@ -346,56 +314,55 @@ export default function LifeklinePage() {
 
     (async () => {
       try {
-        if (years === 1) {
-          const currentYear = new Date().getFullYear();
-          const [lifeData, fullKlineData] = await Promise.all([
-            requestLifeKline(birthInfo, 1),
-            requestLocalFullLife(birthInfo),
-          ]);
-          const yearBar =
-            fullKlineData.find((r) => r.year === currentYear) ??
-            lifeData.periodKline.find((r) => r.year === currentYear) ??
-            lifeData.periodKline[0];
-          const monthly = await requestMonthlyKline(birthInfo, currentYear, yearBar);
-          applyFullLife(fullKlineData);
-          cachePeriodSlicesFromFull(fullKlineData, 1);
-          monthlyCacheRef.current.set(currentYear, monthly);
-          periodCacheRef.current.set(1, monthly);
-          bumpCache();
-          generateResultRef.current = {
-            periodKline: lifeData.periodKline,
-            fullKline: fullKlineData,
-            overall: lifeData.overall,
-            currentYearMonthly: monthly,
-          };
-        } else if (years >= 100) {
-          const [lifeData, fullKlineData] = await Promise.all([
-            requestLifeKline(birthInfo, 10),
-            requestLocalFullLife(birthInfo),
-          ]);
-          applyFullLife(fullKlineData);
-          cachePeriodSlicesFromFull(fullKlineData, 100);
+        const [lifeData10, fullKlineData] = await Promise.all([
+          requestLifeKline(birthInfo, 10),
+          requestLocalFullLife(birthInfo),
+        ]);
+        applyFullLife(fullKlineData);
+        periodCacheRef.current.set(10, lifeData10.periodKline);
+
+        if (years >= 100) {
+          periodCacheRef.current.set(100, fullKlineData);
           generateResultRef.current = {
             periodKline: fullKlineData,
             fullKline: fullKlineData,
-            overall: lifeData.overall,
+            overall: lifeData10.overall,
+            currentYearMonthly: [],
+          };
+        } else if (years === 1) {
+          const currentYear = new Date().getFullYear();
+          const lifeData1 = await requestLifeKline(birthInfo, 1);
+          const yearBar =
+            lifeData1.periodKline.find((r) => r.year === currentYear) ??
+            lifeData10.periodKline.find((r) => r.year === currentYear) ??
+            lifeData1.periodKline[0];
+          const monthly = await requestMonthlyKline(birthInfo, currentYear, yearBar);
+          monthlyCacheRef.current.set(currentYear, monthly);
+          periodCacheRef.current.set(1, monthly);
+          generateResultRef.current = {
+            periodKline: lifeData1.periodKline,
+            fullKline: fullKlineData,
+            overall: lifeData1.overall,
+            currentYearMonthly: monthly,
+          };
+        } else if (years === 10) {
+          generateResultRef.current = {
+            periodKline: lifeData10.periodKline,
+            fullKline: fullKlineData,
+            overall: lifeData10.overall,
             currentYearMonthly: [],
           };
         } else {
-          const [lifeData, fullKlineData] = await Promise.all([
-            requestLifeKline(birthInfo, years),
-            requestLocalFullLife(birthInfo),
-          ]);
-          applyFullLife(fullKlineData);
-          const periodFromFull = sliceForwardPeriodFromFull(fullKlineData, years);
-          cachePeriodSlicesFromFull(fullKlineData, years);
+          const lifeData = await requestLifeKline(birthInfo, years);
+          periodCacheRef.current.set(years, lifeData.periodKline);
           generateResultRef.current = {
-            periodKline: periodFromFull,
+            periodKline: lifeData.periodKline,
             fullKline: fullKlineData,
             overall: lifeData.overall,
             currentYearMonthly: [],
           };
         }
+        bumpCache();
         setGenerateReady(true);
       } catch (err) {
         console.error("lifekline generate failed", err);
@@ -403,7 +370,7 @@ export default function LifeklinePage() {
         setPhase("form");
       }
     })();
-  }, [phase, birthInfo, lifeYears, requestLifeKline, requestMonthlyKline, requestLocalFullLife, applyFullLife, cachePeriodSlicesFromFull, bumpCache]);
+  }, [phase, birthInfo, lifeYears, requestLifeKline, requestMonthlyKline, requestLocalFullLife, applyFullLife, bumpCache]);
 
   useEffect(() => {
     if (phase !== "result" || !birthInfo || !overall) return;
@@ -489,22 +456,38 @@ export default function LifeklinePage() {
 
   const handleBarClick = (_index: number, item: KlineData) => {
     if (!birthInfo || item.isMonthly) return;
-    const kline = generateMonthlyKline(birthInfo, item.year, {
-      open: item.open,
-      close: item.close,
-      high: item.high,
-      low: item.low,
-    });
-    monthlyCacheRef.current.set(item.year, kline);
-    setMonthlyKline(kline);
-    setDrillYear(item.year);
-    setSelectedIndex(undefined);
-    setSelectedYear(null);
+    const cached = monthlyCacheRef.current.get(item.year);
+    if (cached?.length) {
+      setMonthlyKline(cached);
+      setDrillYear(item.year);
+      setSelectedIndex(undefined);
+      setSelectedYear(null);
+      setSelectedYearBar(null);
+      return;
+    }
+    (async () => {
+      try {
+        setError(null);
+        setMonthlyLoading(true);
+        const kline = await requestMonthlyKline(birthInfo, item.year, item);
+        monthlyCacheRef.current.set(item.year, kline);
+        setMonthlyKline(kline);
+        setDrillYear(item.year);
+        setSelectedIndex(undefined);
+        setSelectedYear(null);
+        setSelectedYearBar(null);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "月度K线生成失败，请稍后重试");
+      } finally {
+        setMonthlyLoading(false);
+      }
+    })();
   };
 
   const handleBarDoubleClick = (index: number, item: KlineData) => {
     if (item.isMonthly) return;
     setSelectedIndex(index);
+    setSelectedYearBar(item);
     setSelectedYear(generateYearAnalysis(item));
   };
 
@@ -720,7 +703,7 @@ export default function LifeklinePage() {
               <h3 className="text-sm font-semibold text-app-text">
                 {selectedYear.age}岁 · {selectedYear.year}年 流年分析
               </h3>
-              <button onClick={() => { setSelectedYear(null); setSelectedIndex(undefined); }}>
+              <button onClick={() => { setSelectedYear(null); setSelectedYearBar(null); setSelectedIndex(undefined); }}>
                 <X className="h-5 w-5 text-app-muted" />
               </button>
             </div>
@@ -742,7 +725,7 @@ export default function LifeklinePage() {
               ))}
             </ul>
             <p className="mb-2 text-xs font-medium text-app-text">{selectedYear.year}年 · 12个月运势</p>
-            <MonthlyLineMini birthInfo={birthInfo} year={selectedYear.year} />
+            <MonthlyLineMini birthInfo={birthInfo} year={selectedYear.year} yearBar={selectedYearBar ?? undefined} />
           </div>
         </div>
       )}

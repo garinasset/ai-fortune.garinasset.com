@@ -503,8 +503,27 @@ export default function LifeklineChart({
   );
 }
 
-export function MonthlyLineMini({ birthInfo, year }: { birthInfo: BirthInfo; year: number }) {
-  const data = generateMonthlyKline(birthInfo, year);
+export function MonthlyLineMini({
+  birthInfo,
+  year,
+  yearBar,
+}: {
+  birthInfo: BirthInfo;
+  year: number;
+  yearBar?: KlineData;
+}) {
+  const data = useMemo(() => {
+    const anchor = yearBar
+      ? {
+          open: yearBar.open,
+          close: yearBar.close,
+          high: yearBar.high,
+          low: yearBar.low,
+        }
+      : undefined;
+    return generateMonthlyKline(birthInfo, year, anchor);
+  }, [birthInfo, year, yearBar]);
+
   return (
     <LifeklineChart
       data={data}

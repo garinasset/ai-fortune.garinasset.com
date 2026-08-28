@@ -8,6 +8,7 @@ import {
   sliceForwardPeriodFromFull,
   alignMonthlyKlineToYearBar,
   type YearKlineAnchor,
+  normalizeYearAnchor,
 } from "./fortune-chart";
 import { normalizeBirthInfo, toSolarBirthInfo } from "./birth-utils";
 import {
@@ -710,10 +711,6 @@ export async function generateMonthlyKlineWithAI(
     yearAnchor?: YearKlineAnchor;
   }
 ): Promise<KlineData[]> {
-  if (params.yearAnchor) {
-    return generateMonthlyKline(params.birthInfo, params.year, params.yearAnchor);
-  }
-
   if (isMockMode(config)) {
     await simulateAnalysisDelay();
     return generateMonthlyKline(params.birthInfo, params.year, params.yearAnchor);
@@ -722,7 +719,7 @@ export async function generateMonthlyKlineWithAI(
   try {
     const rows = await generateMonthlyKlineFromLLM(config, params);
     if (params.yearAnchor) {
-      return alignMonthlyKlineToYearBar(rows, params.yearAnchor, params.birthInfo, params.year);
+      return alignMonthlyKlineToYearBar(rows, normalizeYearAnchor(params.yearAnchor), params.birthInfo, params.year);
     }
     return rows;
   } catch (err) {
