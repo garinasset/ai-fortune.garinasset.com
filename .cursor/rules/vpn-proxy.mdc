@@ -1,0 +1,44 @@
+---
+description: VPN 代理网络环境 — git/curl/npm 等需走本地代理
+alwaysApply: true
+---
+
+# VPN 代理（Clash / 7890）
+
+本机开启 VPN 时，系统代理为 **127.0.0.1:7890**（HTTP/HTTPS/SOCKS）。Cursor Agent 终端**不会自动继承** macOS 系统代理，执行网络命令时必须显式走代理。
+
+## Git
+
+本仓库已在 `.git/config` 配置 `http.proxy` / `https.proxy`，直接 `git push` / `git pull` / `git fetch` 即可。
+
+若代理端口变更，更新：
+
+```bash
+git config http.proxy http://127.0.0.1:7890
+git config https.proxy http://127.0.0.1:7890
+```
+
+临时单次命令：
+
+```bash
+git -c http.proxy=http://127.0.0.1:7890 -c https.proxy=http://127.0.0.1:7890 push origin main
+```
+
+## curl / npm / 其他
+
+在 Shell 中先导出代理，或 inline 使用：
+
+```bash
+export http_proxy=http://127.0.0.1:7890 https_proxy=http://127.0.0.1:7890 all_proxy=socks5://127.0.0.1:7890
+```
+
+```bash
+curl -x http://127.0.0.1:7890 ...
+```
+
+## 诊断
+
+- `https://github.com` 直连超时、经代理 200 → 必须用代理
+- `https://api.github.com` 有时可直连，但 **git push 仍走 github.com**，不可省略代理
+
+网络失败时**优先检查代理是否开启、端口是否为 7890**，不要误判为用户本机断网。

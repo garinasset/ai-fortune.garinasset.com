@@ -1,7 +1,7 @@
-/** 塔罗牌面图片路径 — 将图片放入 public/tarot/ 即可自动替换 SVG 插画 */
+/** 塔罗牌面图片路径 — public/tarot/{id}.jpg（Wikimedia RWS1909 公有领域） */
 
 export function getTarotCardImageSrc(cardId: string): string {
-  return `/tarot/${cardId}.webp`;
+  return `/tarot/${cardId}.jpg`;
 }
 
 export const TAROT_IMAGE_DIR = "/tarot";
