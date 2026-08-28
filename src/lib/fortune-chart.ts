@@ -185,31 +185,149 @@ export function generateForwardYearsKline(info: BirthInfo, count: number): Kline
   return annotateKlineExtremes(data);
 }
 
-/** 某一自然年的 12 个月 K 线 */
-export function generateMonthlyKline(info: BirthInfo, targetYear: number): KlineData[] {
+/** 年 K 线锚点：月 K 需与之方向一致 */
+export interface YearKlineAnchor {
+  open: number;
+  close: number;
+  high: number;
+  low: number;
+}
+
+function clampKline(v: number, min = 5, max = 96): number {
+  return Math.max(min, Math.min(max, v));
+}
+
+function roundK(v: number): number {
+  return Math.round(v * 10) / 10;
+}
+
+/** 将月度 K 线约束到年 K 的开收与高低区间，保证涨跌方向一致 */
+export function alignMonthlyKlineToYearBar(
+  rows: KlineData[],
+  anchor: YearKlineAnchor,
+): KlineData[] {
+  if (!rows.length) return rows;
+
+  const yearUp = anchor.close >= anchor.open;
+  const span = anchor.close - anchor.open || (yearUp ? 2 : -2);
+  const result: KlineData[] = [];
+  let prevClose = anchor.open;
+
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i]!;
+    const month = row.month ?? i + 1;
+    const isLast = i === rows.length - 1;
+    const targetClose = isLast
+      ? anchor.close
+      : anchor.open + span * ((i + 1) / rows.length);
+
+    let open = i === 0 ? anchor.open : prevClose;
+    let close = targetClose;
+
+    const aiNoise = (row.close - row.open) * 0.25;
+    close = clampKline(close + aiNoise, anchor.low, anchor.high);
+
+    if (yearUp && close < open) {
+      close = open + Math.max(0.3, Math.abs(span) * 0.015);
+    } else if (!yearUp && close > open) {
+      close = open - Math.max(0.3, Math.abs(span) * 0.015);
+    }
+
+    if (isLast) close = anchor.close;
+
+    const high = clampKline(
+      Math.max(open, close, row.high ?? 0, anchor.high * 0.01 + Math.max(open, close)),
+      anchor.low,
+      anchor.high,
+    );
+    const low = clampKline(
+      Math.min(open, close, row.low ?? 100, anchor.low + Math.min(open, close) * 0.01),
+      anchor.low,
+      anchor.high,
+    );
+
+    result.push({
+      ...row,
+      month,
+      open: roundK(open),
+      close: roundK(close),
+      high: roundK(Math.max(high, open, close)),
+      low: roundK(Math.min(low, open, close)),
+      score: Math.round(close),
+      trend: close >= open ? "up" : "down",
+    });
+    prevClose = close;
+  }
+
+  if (result[0]) result[0].open = roundK(anchor.open);
+  if (result[result.length - 1]) {
+    const last = result[result.length - 1]!;
+    last.close = roundK(anchor.close);
+    last.trend = last.close >= last.open ? "up" : "down";
+    last.score = Math.round(last.close);
+  }
+
+  return annotateKlineExtremes(result);
+}
+
+function resolveYearAnchor(
+  info: BirthInfo,
+  targetYear: number,
+  anchor?: YearKlineAnchor,
+): YearKlineAnchor {
+  if (anchor) return anchor;
+  const currentYear = new Date().getFullYear();
+  const count = Math.max(1, targetYear - currentYear + 1);
+  const years = generateForwardYearsKline(info, count);
+  const bar = years.find((y) => y.year === targetYear);
+  if (bar) {
+    return { open: bar.open, close: bar.close, high: bar.high, low: bar.low };
+  }
+  return { open: 50, close: 55, high: 58, low: 47 };
+}
+
+/** 某一自然年的 12 个月 K 线（与对应年 K 涨跌方向一致） */
+export function generateMonthlyKline(
+  info: BirthInfo,
+  targetYear: number,
+  anchor?: YearKlineAnchor,
+): KlineData[] {
   const solarInfo = resolveSolarInfo(info);
+  const yearBar = resolveYearAnchor(info, targetYear, anchor);
   const seed = hashBirth(info) + targetYear * 100;
   const rand = seededRandom(seed);
   const age = targetYear - solarInfo.year;
   const now = new Date();
   const isThisYear = targetYear === now.getFullYear();
+  const yearUp = yearBar.close >= yearBar.open;
+  const span = yearBar.close - yearBar.open;
   const data: KlineData[] = [];
-  let prevClose = 45 + (seed % 20);
+  let prevClose = yearBar.open;
 
   for (let m = 1; m <= 12; m++) {
-    const open = prevClose;
-    const close = Math.max(12, Math.min(96, open + (rand() - 0.5) * 18));
-    const high = Math.min(100, Math.max(open, close) + rand() * 5);
-    const low = Math.max(5, Math.min(open, close) - rand() * 5);
+    const open = m === 1 ? yearBar.open : prevClose;
+    const progress = m / 12;
+    const idealClose = yearBar.open + span * progress;
+    const noise = (rand() - 0.5) * Math.max(4, Math.abs(span) * 0.35);
+    let close = idealClose + noise;
+
+    if (yearUp && close < open) close = open + rand() * 2 + 0.2;
+    if (!yearUp && close > open) close = open - rand() * 2 - 0.2;
+    if (m === 12) close = yearBar.close;
+
+    close = clampKline(close, yearBar.low, yearBar.high);
+    const high = clampKline(Math.max(open, close) + rand() * 3, yearBar.low, yearBar.high);
+    const low = clampKline(Math.min(open, close) - rand() * 3, yearBar.low, yearBar.high);
     const isCurrentMonth = isThisYear && m === now.getMonth() + 1;
+
     data.push({
       year: targetYear,
       age,
       month: m,
-      open: Math.round(open * 10) / 10,
-      close: Math.round(close * 10) / 10,
-      high: Math.round(high * 10) / 10,
-      low: Math.round(low * 10) / 10,
+      open: roundK(open),
+      close: roundK(close),
+      high: roundK(high),
+      low: roundK(low),
       score: Math.round(close),
       trend: close >= open ? "up" : "down",
       isMonthly: true,
@@ -223,6 +341,7 @@ export function generateMonthlyKline(info: BirthInfo, targetYear: number): Kline
     });
     prevClose = close;
   }
+
   return annotateKlineExtremes(data);
 }
 

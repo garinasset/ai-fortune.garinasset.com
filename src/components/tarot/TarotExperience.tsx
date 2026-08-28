@@ -10,6 +10,7 @@ import AiDisclaimer from "@/components/AiDisclaimer";
 import TarotDrawStage from "@/components/tarot/TarotDrawStage";
 import TarotSpreadDisplay from "@/components/tarot/TarotSpreadDisplay";
 import BoostFortuneButton from "@/components/BoostFortuneButton";
+import TarotExploreMore from "@/components/tarot/TarotExploreMore";
 import { canUse, incrementUsage } from "@/lib/user-store";
 import { usePetFoodRemaining } from "@/hooks/usePetFoodRemaining";
 import { formatPetFoodRemaining } from "@/lib/pet-food-remaining";
@@ -30,11 +31,6 @@ interface TarotSessionState {
 interface TarotExperienceProps {
   embedded?: boolean;
 }
-
-const DARK_PANEL =
-  "rounded-2xl border border-violet-500/15 bg-[#14101f]/95 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]";
-const DARK_INPUT =
-  "min-h-[88px] w-full resize-none rounded-xl border border-violet-500/25 bg-[#0a0612] px-3 py-2.5 text-sm text-violet-50 placeholder:text-violet-400/40 focus:border-app-gold/50 focus:outline-none focus:ring-1 focus:ring-app-gold/30";
 
 export default function TarotExperience({ embedded }: TarotExperienceProps) {
   const [phase, setPhase] = useState<Phase>("form");
@@ -128,9 +124,9 @@ export default function TarotExperience({ embedded }: TarotExperienceProps) {
   };
 
   return (
-    <div className="tarot-dark-theme page-section -mx-1 rounded-2xl bg-gradient-to-b from-[#0a0612] via-[#120a1c] to-[#0a0612] px-2 py-3 sm:px-3">
+    <div className="page-section">
       {!embedded && (
-        <p className="caption mb-3 text-violet-300/60">
+        <p className="caption mb-3 text-app-muted">
           塔罗AI · 韦特系牌阵 · {formatPetFoodRemaining(remaining)}
         </p>
       )}
@@ -140,28 +136,28 @@ export default function TarotExperience({ embedded }: TarotExperienceProps) {
           <div className="mb-4">
             <TarotIntro />
           </div>
-          <div className={`mb-4 overflow-hidden p-4 ${DARK_PANEL}`}>
+          <div className="app-card mb-4 !p-4">
             <div className="mb-3 flex items-center gap-2">
-              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-violet-500/20 text-lg">🔮</span>
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-app-gold/15 text-lg">🔮</span>
               <div>
                 <h2 className="text-sm font-semibold text-app-gold">开始占卜</h2>
-                <p className="text-[11px] text-violet-300/65">默念问题 · 洗牌 · 选 3 张 · AI 解读</p>
+                <p className="text-[11px] text-app-muted">默念问题 · 洗牌 · 选 3 张 · AI 解读</p>
               </div>
             </div>
-            <label className="mb-1 block text-xs font-medium text-violet-100">你想问什么？</label>
+            <label className="mb-1 block text-xs font-medium text-app-text">你想问什么？</label>
             <textarea
-              className={DARK_INPUT}
+              className="min-h-[88px] w-full resize-none rounded-xl border border-app-border bg-app-bg/50 px-3 py-2.5 text-sm text-app-text placeholder:text-app-muted focus:border-app-gold/50 focus:outline-none focus:ring-1 focus:ring-app-gold/30"
               placeholder="例如：这段感情会走向何方？近期工作是否该变动？"
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
               maxLength={300}
             />
-            <p className="mt-1 text-right text-[10px] text-violet-400/50">{question.length}/300</p>
+            <p className="mt-1 text-right text-[10px] text-app-muted">{question.length}/300</p>
             <TarotSampleQuestions onPick={setQuestion} />
             <button
               type="button"
               onClick={handleStart}
-              className="app-btn mt-4 flex w-full items-center justify-center gap-2 shadow-[0_4px_24px_rgba(139,92,246,0.25)]"
+              className="app-btn mt-4 flex w-full items-center justify-center gap-2"
             >
               <Sparkles className="h-4 w-4" />
               马上开始AI占卜
@@ -169,11 +165,14 @@ export default function TarotExperience({ embedded }: TarotExperienceProps) {
           </div>
           {error && <p className="mb-3 text-center text-xs text-red-400">{error}</p>}
           {embedded && <TarotHubDemo />}
+          <div className="mt-4">
+            <TarotExploreMore />
+          </div>
         </>
       )}
 
       {phase === "drawing" && (
-        <div className={`py-4 ${DARK_PANEL}`}>
+        <div className="app-card py-4 !p-4">
           <TarotDrawStage question={question} onReadyForAnalysis={handleReadyForAnalysis} />
         </div>
       )}
@@ -184,14 +183,14 @@ export default function TarotExperience({ embedded }: TarotExperienceProps) {
 
       {phase === "result" && result && (
         <>
-          <div className={`mb-4 p-4 ${DARK_PANEL}`}>
-            <p className="mb-1 text-xs text-violet-400/70">所问</p>
-            <p className="text-sm text-violet-50">{result.question}</p>
+          <div className="app-card mb-4 !p-4">
+            <p className="mb-1 text-xs text-app-muted">所问</p>
+            <p className="text-sm text-app-text">{result.question}</p>
           </div>
 
-          <div className={`mb-4 overflow-hidden border-violet-500/25 py-6 ${DARK_PANEL}`}>
+          <div className="app-card mb-4 overflow-hidden py-6 !p-4">
             <p className="mb-5 text-center text-sm font-semibold tracking-[0.2em] text-app-gold">牌 阵</p>
-            <TarotSpreadDisplay cards={result.cards} spreadName={result.spreadName} dark />
+            <TarotSpreadDisplay cards={result.cards} spreadName={result.spreadName} />
             {result.theme && (
               <p className="mt-5 text-center text-xs font-medium text-app-gold/90">
                 整体主题 · {result.theme}
@@ -199,15 +198,14 @@ export default function TarotExperience({ embedded }: TarotExperienceProps) {
             )}
           </div>
 
-          <AiDisclaimer className="mb-4 text-violet-400/70" />
+          <AiDisclaimer className="mb-4" />
 
-          <div className={`mb-4 p-4 ${DARK_PANEL}`}>
+          <div className="app-card mb-4 !p-4">
             <h3 className="mb-3 text-sm font-semibold text-app-gold">AI 牌阵解读</h3>
             <FormattedAnalysisText
               text={result.analysis}
               collapsedParagraphs={0}
               showLabel={false}
-              className="!border-violet-500/20 !bg-[#0a0612]/50"
             />
             {result.advice && (
               <div className="mt-4">
@@ -216,7 +214,6 @@ export default function TarotExperience({ embedded }: TarotExperienceProps) {
                   text={`💡 ${result.advice}`}
                   collapsedParagraphs={0}
                   showLabel={false}
-                  className="!border-violet-500/20 !bg-[#0a0612]/50"
                 />
               </div>
             )}
@@ -258,6 +255,9 @@ export default function TarotExperience({ embedded }: TarotExperienceProps) {
           />
           <div className="mt-3">
             <BoostFortuneButton />
+          </div>
+          <div className="mt-4">
+            <TarotExploreMore />
           </div>
         </>
       )}

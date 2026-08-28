@@ -19,6 +19,8 @@ interface SpiritPetDisplayProps {
   onChangePet?: () => void;
   /** 头像旁「和我互动」入口（灵宠主页显示，对话页隐藏） */
   showInteractLink?: boolean;
+  /** 延后加载动态头像/视频，加快首屏 */
+  preferVideo?: boolean;
 }
 
 export default function SpiritPetDisplay({
@@ -29,6 +31,7 @@ export default function SpiritPetDisplay({
   onGoAwakening,
   onChangePet,
   showInteractLink = true,
+  preferVideo = true,
 }: SpiritPetDisplayProps) {
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailTab, setDetailTab] = useState<"intro" | "skills">("intro");
@@ -82,6 +85,7 @@ export default function SpiritPetDisplay({
                 emoji={pet.emoji}
                 size={avatarSize}
                 className="!h-full !w-full !rounded-full"
+                preferVideo={preferVideo}
               />
               <span className="badge badge-gold absolute left-1 top-1 !px-2 !py-0.5 micro font-bold">
                 {formatLevelShort(level)}

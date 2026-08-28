@@ -6,6 +6,8 @@ import {
   generateOverallAnalysis,
   annotateKlineExtremes,
   sliceForwardPeriodFromFull,
+  alignMonthlyKlineToYearBar,
+  type YearKlineAnchor,
 } from "./fortune-chart";
 import { normalizeBirthInfo, toSolarBirthInfo } from "./birth-utils";
 import {
@@ -705,15 +707,20 @@ export async function generateMonthlyKlineWithAI(
     birthInfo: BirthInfo;
     year: number;
     baziText?: string;
+    yearAnchor?: YearKlineAnchor;
   }
 ): Promise<KlineData[]> {
   if (isMockMode(config)) {
     await simulateAnalysisDelay();
-    return generateMonthlyKline(params.birthInfo, params.year);
+    return generateMonthlyKline(params.birthInfo, params.year, params.yearAnchor);
   }
 
   try {
-    return await generateMonthlyKlineFromLLM(config, params);
+    const rows = await generateMonthlyKlineFromLLM(config, params);
+    if (params.yearAnchor) {
+      return alignMonthlyKlineToYearBar(rows, params.yearAnchor);
+    }
+    return rows;
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     const shouldFallback =
@@ -723,7 +730,7 @@ export async function generateMonthlyKlineWithAI(
       message.includes("未返回");
     if (!shouldFallback) throw err;
     console.error("[generateMonthlyKlineWithAI] AI failed, using local fallback:", err);
-    return generateMonthlyKline(params.birthInfo, params.year);
+    return generateMonthlyKline(params.birthInfo, params.year, params.yearAnchor);
   }
 }
 
@@ -733,16 +740,20 @@ async function generateMonthlyKlineFromLLM(
     birthInfo: BirthInfo;
     year: number;
     baziText?: string;
+    yearAnchor?: YearKlineAnchor;
   },
 ): Promise<KlineData[]> {
   const birthText = formatBirthInfoForPrompt(params.birthInfo);
   const baziNote = params.baziText ? `\n八字参考：${params.baziText}` : "";
   const age = params.year - params.birthInfo.year;
+  const anchorNote = params.yearAnchor
+    ? `\n年K线约束：open=${params.yearAnchor.open}, close=${params.yearAnchor.close}, high=${params.yearAnchor.high}, low=${params.yearAnchor.low}。月度整体趋势须与年K一致（年涨则月K整体向上，年跌则月K整体向下），12月收盘应接近年K收盘。`
+    : "";
 
   const result = await completeJson<MonthlyKlineAiResult>(
     requireLLMConfig(config),
     "你是一名命理数据分析师。请严格输出 json（json_object），不要输出额外文本。",
-    `请根据用户信息生成 ${params.year} 年的月度K线数据（1-12月）。\n用户信息：${birthText}${baziNote}\n要求：\n1) 返回 kline 数组，包含 12 项，每项 month/open/close/high/low。\n2) month 从 1 到 12。\n3) 数值范围 1-100，且 high >= max(open, close), low <= min(open, close)。\n4) 输出紧凑 json，不要换行注释，不要多余字段。\n返回示例：{\"kline\":[{\"month\":1,\"open\":60,\"close\":64,\"high\":68,\"low\":57}]}`,
+    `请根据用户信息生成 ${params.year} 年的月度K线数据（1-12月）。\n用户信息：${birthText}${baziNote}${anchorNote}\n要求：\n1) 返回 kline 数组，包含 12 项，每项 month/open/close/high/low。\n2) month 从 1 到 12。\n3) 数值范围 1-100，且 high >= max(open, close), low <= min(open, close)。\n4) 输出紧凑 json，不要换行注释，不要多余字段。\n返回示例：{\"kline\":[{\"month\":1,\"open\":60,\"close\":64,\"high\":68,\"low\":57}]}`,
     { maxTokens: 2200, temperature: 0.35 },
   );
 
@@ -794,6 +805,7 @@ export async function askSpiritPet(
     petName?: string;
     petEmoji?: string;
     personName?: string;
+    measurementContext?: string;
   }
 ): Promise<{ answer: string; mock: boolean }> {
   if (!params.question.trim()) throw new Error("问题不能为空");
@@ -807,11 +819,14 @@ export async function askSpiritPet(
 
   const petTitle = params.petName ? `${params.petEmoji ?? ""} ${params.petName}`.trim() : "AI 灵宠";
   const userContext = formatBirthInfoForPrompt(params.birthInfo);
+  const measurementBlock = params.measurementContext?.trim()
+    ? `\n\n【站内已完成的测算记录（须严格一致）】\n${params.measurementContext.trim()}`
+    : "";
 
   const answer = await completeJson<{ answer: string }>(
     requireLLMConfig(config),
-    `你是一位温暖、克制且具体的命理顾问与灵宠陪伴者。\n请严格输出 json。\n返回格式：{"answer":"..."}。\nanswer 要求：1) 80-180 字；2) 分2-4行，行与行之间用\\n分隔；3) 给出可执行建议；4) 不夸大承诺；5) 中文输出。`,
-    `用户：${params.personName ?? "用户"}\n灵宠：${petTitle}\n生辰信息：${userContext}\n问题：${params.question}`,
+    `你是一位温暖、克制且具体的命理顾问与灵宠陪伴者。\n请严格输出 json。\n返回格式：{"answer":"..."}。\nanswer 要求：1) 80-180 字；2) 分2-4行，行与行之间用\\n分隔；3) 给出可执行建议；4) 不夸大承诺；5) 中文输出。\n若提供了站内八字/排盘记录，回答中的日主、五行、命格描述必须与记录完全一致，不可自行编造矛盾信息。`,
+    `用户：${params.personName ?? "用户"}\n灵宠：${petTitle}\n生辰信息：${userContext}${measurementBlock}\n问题：${params.question}`,
   );
 
   if (!answer?.answer?.trim()) {

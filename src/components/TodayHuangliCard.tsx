@@ -37,23 +37,23 @@ export default function TodayHuangliCard() {
             <p className="text-[10px] text-app-muted">每日宜忌 · 顺时而行</p>
           </div>
           {(huangli.traditionalFestivals.length > 0 || huangli.taoistFestivals.length > 0) && (
-            <div className="max-w-[52%] shrink-0 text-right">
-              {huangli.traditionalFestivals.length > 0 && (
-                <div className="mb-1">
-                  <p className="text-[9px] font-medium text-app-gold/80">传统节日</p>
-                  <p className="text-[10px] leading-snug text-app-text">
-                    {huangli.traditionalFestivals.join(" · ")}
-                  </p>
-                </div>
-              )}
-              {huangli.taoistFestivals.length > 0 && (
-                <div>
-                  <p className="text-[9px] font-medium text-app-accent/80">道教节日</p>
-                  <p className="text-[10px] leading-snug text-app-muted">
-                    {huangli.taoistFestivals.join(" · ")}
-                  </p>
-                </div>
-              )}
+            <div className="flex max-w-[58%] shrink-0 flex-wrap items-center justify-end gap-1">
+              {huangli.traditionalFestivals.map((f) => (
+                <span
+                  key={`t-${f}`}
+                  className="inline-flex items-center rounded-full border border-app-gold/30 bg-app-gold/10 px-1.5 py-0.5 text-[9px] leading-none text-app-gold"
+                >
+                  {f}
+                </span>
+              ))}
+              {huangli.taoistFestivals.map((f) => (
+                <span
+                  key={`d-${f}`}
+                  className="inline-flex items-center rounded-full border border-app-accent/30 bg-app-accent/10 px-1.5 py-0.5 text-[9px] leading-none text-app-accent"
+                >
+                  {f}
+                </span>
+              ))}
             </div>
           )}
         </div>

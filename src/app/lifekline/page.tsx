@@ -27,20 +27,16 @@ import { X } from "lucide-react";
 import ReportPosterButton, { SharePosterButton } from "@/components/ReportPosterButton";
 import { LIFE_YEAR_OPTIONS } from "@/lib/life-year-options";
 import PageHeader from "@/components/ui/PageHeader";
-import PageCarouselBanner from "@/components/PageCarouselBanner";
+import DeferredPageBanner from "@/components/DeferredPageBanner";
 import FortuneHubNav, { type FortuneHubTab } from "@/components/FortuneHubNav";
 import AiDisclaimer from "@/components/AiDisclaimer";
-import LiuyaoHubPanel from "@/components/fortune-hub/LiuyaoHubPanel";
-import TarotHubPanel from "@/components/fortune-hub/TarotHubPanel";
-import XiangHubPanel from "@/components/fortune-hub/XiangHubPanel";
-import MasterHubPanel from "@/components/fortune-hub/MasterHubPanel";
-import AskHubPanel from "@/components/fortune-hub/AskHubPanel";
-import RecordsHubPanel from "@/components/fortune-hub/RecordsHubPanel";
-import BaziHubPanel from "@/components/fortune-hub/BaziHubPanel";
+import { LazyHubPanel, LazyBaziHubPanel } from "@/components/fortune-hub/LazyHubPanels";
 import { LifeklineHubDemo } from "@/components/fortune-hub/HubFeatureDemos";
 import FoodRulesModal from "@/components/FoodRulesModal";
 import FormattedAnalysisText from "@/components/FormattedAnalysisText";
 import { PAGE_BANNERS } from "@/lib/page-banners";
+import { saveLifeklineMeasurement } from "@/lib/fortune-measurement-context";
+import type { YearKlineAnchor } from "@/lib/fortune-chart";
 
 function periodTitle(lifeYears: number, drillYear: number | null): string {
   if (drillYear) return `${drillYear}年 · 月度 K 线`;
@@ -155,11 +151,18 @@ export default function LifeklinePage() {
     return "forward";
   }, [drillYear, lifeYears]);
 
-  const requestMonthlyKline = useCallback(async (info: BirthInfo, year: number) => {
+  const requestMonthlyKline = useCallback(async (
+    info: BirthInfo,
+    year: number,
+    yearBar?: KlineData,
+  ) => {
+    const yearAnchor: YearKlineAnchor | undefined = yearBar
+      ? { open: yearBar.open, close: yearBar.close, high: yearBar.high, low: yearBar.low }
+      : undefined;
     const res = await fetch("/api/chart/monthly", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ birthInfo: info, year }),
+      body: JSON.stringify({ birthInfo: info, year, yearAnchor }),
     });
     const data = await res.json();
     if (!res.ok) {
@@ -268,7 +271,11 @@ export default function LifeklinePage() {
       setPeriodLoading(true);
       try {
         setError(null);
-        const monthly = await requestMonthlyKline(info, year);
+        const yearBar =
+          fullKline.find((r) => r.year === year) ??
+          periodCacheRef.current.get(5)?.find((r) => r.year === year) ??
+          periodCacheRef.current.get(10)?.find((r) => r.year === year);
+        const monthly = await requestMonthlyKline(info, year, yearBar);
         monthlyCacheRef.current.set(year, monthly);
         setCurrentYearMonthly(monthly);
       } catch (err) {
@@ -332,14 +339,18 @@ export default function LifeklinePage() {
     (async () => {
       try {
         if (years === 1) {
-          const [lifeData, monthly, fullKlineData] = await Promise.all([
+          const currentYear = new Date().getFullYear();
+          const [lifeData, fullKlineData] = await Promise.all([
             requestLifeKline(birthInfo, 1),
-            requestMonthlyKline(birthInfo, new Date().getFullYear()),
             requestLocalFullLife(birthInfo),
           ]);
+          const yearBar =
+            fullKlineData.find((r) => r.year === currentYear) ??
+            lifeData.periodKline.find((r) => r.year === currentYear) ??
+            lifeData.periodKline[0];
+          const monthly = await requestMonthlyKline(birthInfo, currentYear, yearBar);
           applyFullLife(fullKlineData);
           cachePeriodSlicesFromFull(fullKlineData, 1);
-          const currentYear = new Date().getFullYear();
           monthlyCacheRef.current.set(currentYear, monthly);
           periodCacheRef.current.set(1, monthly);
           bumpCache();
@@ -464,6 +475,7 @@ export default function LifeklinePage() {
       data: { birthInfo, kline: pending.fullKline, overall: pending.overall, bazi: baziResult, lifeYears },
     });
     saveBirthInfo(birthInfo);
+    saveLifeklineMeasurement(birthInfo, baziResult, pending.overall.summary);
     setPhase("result");
   }, [birthInfo, lifeYears]);
 
@@ -481,7 +493,7 @@ export default function LifeklinePage() {
       try {
         setError(null);
         setMonthlyLoading(true);
-        const kline = await requestMonthlyKline(birthInfo, item.year);
+        const kline = await requestMonthlyKline(birthInfo, item.year, item);
         monthlyCacheRef.current.set(item.year, kline);
         setMonthlyKline(kline);
         setDrillYear(item.year);
@@ -514,7 +526,7 @@ export default function LifeklinePage() {
           title="人生 K 线"
           subtitle={`命势推演，可视化排盘，${formatPetFoodRemaining(remaining)}`}
         />
-        <PageCarouselBanner slides={PAGE_BANNERS.lifekline} className="!mb-3 !pt-0" />
+        <DeferredPageBanner slides={PAGE_BANNERS.lifekline} className="!mb-3 !pt-0" />
         <FortuneHubNav active={hubTab} onChange={setHubTab} />
         <div className="relative min-h-[320px]">
           <GenerationOverlay
@@ -551,18 +563,13 @@ export default function LifeklinePage() {
         }
       />
 
-      <PageCarouselBanner slides={PAGE_BANNERS.lifekline} className="!mb-3 !pt-0" />
+      <DeferredPageBanner slides={PAGE_BANNERS.lifekline} className="!mb-3 !pt-0" />
 
       <FortuneHubNav active={hubTab} onChange={setHubTab} />
 
-      {hubTab === "liuyao" && <LiuyaoHubPanel />}
-      {hubTab === "tarot" && <TarotHubPanel />}
-      {hubTab === "xiang" && <XiangHubPanel />}
-      {hubTab === "master" && <MasterHubPanel />}
-      {hubTab === "ask" && <AskHubPanel />}
-      {hubTab === "records" && <RecordsHubPanel />}
+      <LazyHubPanel tab={hubTab} />
 
-      {showBaziContent && <BaziHubPanel />}
+      {showBaziContent && <LazyBaziHubPanel />}
 
       {showKlineContent && phase === "form" && (
         <>

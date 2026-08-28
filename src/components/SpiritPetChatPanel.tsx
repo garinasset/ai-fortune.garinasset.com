@@ -16,6 +16,10 @@ import { getSpiritAbilityPrompt } from "@/lib/spirit-pet-ask";
 import TypewriterText from "@/components/TypewriterText";
 import SpiritPetDisplay from "@/components/SpiritPetDisplay";
 import SpiritPetMediaAvatar from "@/components/SpiritPetMediaAvatar";
+import {
+  loadFortuneMeasurementContext,
+  formatFortuneContextForPrompt,
+} from "@/lib/fortune-measurement-context";
 import type { BirthInfo, SpiritPetProfile } from "@/lib/types";
 
 interface ChatMessage {
@@ -129,6 +133,7 @@ export default function SpiritPetChatPanel({
 
       let ans = "";
       try {
+        const measurementContext = formatFortuneContextForPrompt(loadFortuneMeasurementContext());
         const res = await fetch("/api/ask", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -138,6 +143,7 @@ export default function SpiritPetChatPanel({
             petName: pet?.fullName,
             petEmoji: pet?.emoji,
             personName: getPersonDisplayName(birthInfo, user?.nickname || ownerName),
+            measurementContext: measurementContext || undefined,
           }),
         });
         const data = await res.json();

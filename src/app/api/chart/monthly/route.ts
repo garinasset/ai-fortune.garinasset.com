@@ -8,9 +8,10 @@ import type { BirthInfo } from "@/lib/types";
 
 export async function POST(req: NextRequest) {
   try {
-    const { birthInfo, year } = (await req.json()) as {
+    const { birthInfo, year, yearAnchor } = (await req.json()) as {
       birthInfo: BirthInfo;
       year: number;
+      yearAnchor?: { open: number; close: number; high: number; low: number };
     };
 
     if (!birthInfo?.year || !year) {
@@ -37,6 +38,7 @@ export async function POST(req: NextRequest) {
       birthInfo: normalized,
       year,
       baziText,
+      yearAnchor,
     });
 
     return NextResponse.json({ kline: annotateKlineExtremes(kline) });

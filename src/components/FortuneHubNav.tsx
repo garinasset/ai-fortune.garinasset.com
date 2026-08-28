@@ -25,12 +25,12 @@ const PRIMARY_TABS: TabItem[] = [
   { kind: "tab", id: "tarot", label: "塔罗AI" },
   { kind: "tab", id: "lifekline", label: "人生K线" },
   { kind: "tab", id: "xiang", label: "AI看相" },
-  { kind: "tab", id: "records", label: "我的测算" },
+  { kind: "tab", id: "bazi", label: "八字排盘" },
 ];
 
 /** 点击「显示更多」后展开 */
 const MORE_ITEMS: NavItem[] = [
-  { kind: "tab", id: "bazi", label: "八字排盘" },
+  { kind: "tab", id: "records", label: "我的测算" },
   { kind: "tab", id: "master", label: "问真人大师" },
   { kind: "tab", id: "ask", label: "问灵宠" },
   { kind: "link", href: "/ask?from=lifekline&ability=今日灵签", label: "今日灵签" },

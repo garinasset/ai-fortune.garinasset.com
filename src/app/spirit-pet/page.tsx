@@ -2,6 +2,7 @@
 
 import { useLayoutEffect, useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { UserCircle, BookOpen, ShoppingBag } from "lucide-react";
 import SpiritPetStageIntro from "@/components/SpiritPetStageIntro";
 import SpiritPetMatchFriendsButton from "@/components/SpiritPetMatchFriendsButton";
@@ -23,15 +24,13 @@ import { addPrimaryPerson, getPrimaryPerson, getActivePersonId } from "@/lib/per
 import { updateUser } from "@/lib/user-store";
 import { useApp } from "@/context/AppContext";
 import SpiritPetDisplay from "@/components/SpiritPetDisplay";
-import SpiritPetOnboarding from "@/components/SpiritPetOnboarding";
 import SpiritPetClaimForm from "@/components/SpiritPetClaimForm";
-import SpiritPetAwakeningPanel from "@/components/SpiritPetAwakeningPanel";
 import SpiritPetTasksPanel from "@/components/SpiritPetTasksPanel";
 import ReportPosterButton, { SharePosterButton } from "@/components/ReportPosterButton";
 import SpiritPetErrorBoundary from "@/components/SpiritPetErrorBoundary";
 import GenerationOverlay from "@/components/GenerationOverlay";
 import PageHeader from "@/components/ui/PageHeader";
-import PageCarouselBanner from "@/components/PageCarouselBanner";
+import DeferredPageBanner from "@/components/DeferredPageBanner";
 import { PAGE_BANNERS } from "@/lib/page-banners";
 import SectionCard from "@/components/ui/SectionCard";
 import BackLink from "@/components/ui/BackLink";
@@ -39,6 +38,20 @@ import {
   resolveSpiritPetPageState,
   type SpiritPetPagePhase,
 } from "@/lib/spirit-pet-page-state";
+
+const SpiritPetOnboarding = dynamic(() => import("@/components/SpiritPetOnboarding"), {
+  ssr: false,
+  loading: () => (
+    <div className="app-card min-h-[240px] animate-pulse !p-6">
+      <div className="mx-auto h-4 w-32 rounded bg-app-border/40" />
+    </div>
+  ),
+});
+
+const SpiritPetAwakeningPanel = dynamic(() => import("@/components/SpiritPetAwakeningPanel"), {
+  ssr: false,
+  loading: () => <div className="app-card mb-2 min-h-[100px] animate-pulse !p-4" />,
+});
 
 const GEN_STEPS = [
   "AI 大师正在感应命格…",
@@ -62,6 +75,7 @@ function SpiritPetPageContent() {
   const [genTip, setGenTip] = useState(GEN_STEPS[0]);
   const [swapMode, setSwapMode] = useState(false);
   const [swapError, setSwapError] = useState<string | null>(null);
+  const [mediaReady, setMediaReady] = useState(false);
   const tasksRef = useRef<HTMLDivElement>(null);
   const awakeningRef = useRef<HTMLDivElement>(null);
 
@@ -111,6 +125,12 @@ function SpiritPetPageContent() {
     } finally {
       setReady(true);
     }
+  }, [ready]);
+
+  useEffect(() => {
+    if (!ready) return;
+    const t = window.setTimeout(() => setMediaReady(true), 400);
+    return () => window.clearTimeout(t);
   }, [ready]);
 
   const refreshPet = useCallback(() => {
@@ -282,13 +302,14 @@ function SpiritPetPageContent() {
   return (
     <>
       <PageHeader title="AI 灵宠" subtitle="陪伴成长 · 觉醒升级" />
-      <PageCarouselBanner slides={PAGE_BANNERS["spirit-pet"]} className="!mb-3 !pt-0" />
+      <DeferredPageBanner slides={PAGE_BANNERS["spirit-pet"]} className="!mb-3 !pt-0" />
 
       <SpiritPetDisplay
         pet={pet}
         personName={personName}
         onGoAwakening={scrollToAwakening}
         onChangePet={handleChangePet}
+        preferVideo={mediaReady}
       />
 
       {swapError && (

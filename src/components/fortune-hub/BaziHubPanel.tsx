@@ -14,6 +14,7 @@ import { saveRecord, buildPersonKey, buildPersonLabel } from "@/lib/record-store
 import { saveBirthInfo } from "@/lib/birth-store";
 import { ensurePrimaryPersonBeforeCalc, getPersonDisplayName } from "@/lib/person-store";
 import { saveSessionResult, loadSessionResult, clearSessionResult } from "@/lib/session-result-cache";
+import { saveBaziMeasurement } from "@/lib/fortune-measurement-context";
 import type { BirthInfo, BaziResult, AnalysisResult } from "@/lib/types";
 import { BaziHubDemo } from "@/components/fortune-hub/HubFeatureDemos";
 import BaziFlowPanel from "@/components/BaziFlowPanel";
@@ -109,6 +110,7 @@ export default function BaziHubPanel() {
       data: { birthInfo: pending.birthInfo, bazi: pending.bazi, analysis: pending.analysis },
     });
     saveSessionResult("bazi", pending);
+    saveBaziMeasurement(pending.birthInfo, pending.bazi, pending.analysis.summary);
     setPhase("result");
   }, []);
 
