@@ -32,12 +32,15 @@ const PRIMARY_ROW1 = [
 const PRIMARY_ROW2 = [
   { href: "/lifekline?tab=bazi", icon: Sparkles, label: "八字排盘", desc: "四柱八字" },
   { href: "/xiang", icon: Hand, label: "AI看相", desc: "手相面相" },
-  { type: "fortune-guide" as const, icon: Sun, label: "今日运势指引", desc: "每日运势" },
+  { href: "/ask?from=spirit-pet", icon: MessageCircle, label: "问AI灵宠", desc: "守护灵对话" },
 ];
 
-const SECONDARY = [
+const SECONDARY: Array<
+  | { href: string; icon: typeof ShoppingBag; label: string }
+  | { type: "fortune-guide"; icon: typeof Sun; label: string }
+> = [
   { href: "/shop", icon: ShoppingBag, label: "灵宠商城" },
-  { href: "/ask?from=spirit-pet", icon: MessageCircle, label: "问AI灵宠" },
+  { type: "fortune-guide", icon: Sun, label: "今日运势指引" },
   { href: "/master", icon: UserRound, label: "问真人大师" },
   { href: "/records", icon: FileText, label: "我的测算" },
   { href: "/community", icon: Users, label: "社区" },
@@ -112,23 +115,6 @@ export default function HomePage() {
         </div>
         <div className="grid grid-cols-3 gap-2">
           {PRIMARY_ROW2.map((item) => {
-            if ("type" in item && item.type === "fortune-guide") {
-              const Icon = item.icon;
-              return (
-                <button
-                  key={item.label}
-                  type="button"
-                  onClick={goDailyFortuneGuide}
-                  className="module-card-featured !py-3 text-left"
-                >
-                  <div className="mb-1.5 flex h-10 w-10 items-center justify-center rounded-full bg-app-gold/15">
-                    <Icon className="h-5 w-5 text-app-gold" strokeWidth={1.8} />
-                  </div>
-                  <span className="caption font-semibold text-app-text">{item.label}</span>
-                  <span className="micro mt-0.5">{item.desc}</span>
-                </button>
-              );
-            }
             const Icon = item.icon;
             return (
               <Link key={item.label} href={item.href} className="module-card-featured !py-3">
@@ -154,14 +140,32 @@ export default function HomePage() {
       <section className="page-section">
         <p className="section-label">更多服务</p>
         <div className="grid grid-cols-3 gap-2">
-          {SECONDARY.map(({ href, icon: Icon, label }) => (
-            <Link key={label} href={href} className="module-card !p-2">
-              <div className="mb-1 flex h-8 w-8 items-center justify-center rounded-full bg-app-bg">
-                <Icon className="h-3.5 w-3.5 text-app-gold" strokeWidth={1.8} />
-              </div>
-              <span className="micro text-app-text">{label}</span>
-            </Link>
-          ))}
+          {SECONDARY.map((item) => {
+            const Icon = item.icon;
+            if ("type" in item && item.type === "fortune-guide") {
+              return (
+                <button
+                  key={item.label}
+                  type="button"
+                  onClick={goDailyFortuneGuide}
+                  className="module-card !p-2 text-left"
+                >
+                  <div className="mb-1 flex h-8 w-8 items-center justify-center rounded-full bg-app-bg">
+                    <Icon className="h-3.5 w-3.5 text-app-gold" strokeWidth={1.8} />
+                  </div>
+                  <span className="micro text-app-text">{item.label}</span>
+                </button>
+              );
+            }
+            return (
+              <Link key={item.label} href={item.href} className="module-card !p-2">
+                <div className="mb-1 flex h-8 w-8 items-center justify-center rounded-full bg-app-bg">
+                  <Icon className="h-3.5 w-3.5 text-app-gold" strokeWidth={1.8} />
+                </div>
+                <span className="micro text-app-text">{item.label}</span>
+              </Link>
+            );
+          })}
         </div>
       </section>
 

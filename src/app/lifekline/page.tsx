@@ -10,6 +10,8 @@ import OverallOverviewPanel from "@/components/OverallOverviewPanel";
 import {
   generateYearAnalysis,
   sliceForwardPeriodFromFull,
+  generateMonthlyKline,
+  type YearKlineAnchor,
 } from "@/lib/fortune-chart";
 import { calculateBazi } from "@/lib/bazi";
 import { canUse, incrementUsage, addHistory } from "@/lib/user-store";
@@ -36,7 +38,6 @@ import FoodRulesModal from "@/components/FoodRulesModal";
 import FormattedAnalysisText from "@/components/FormattedAnalysisText";
 import { PAGE_BANNERS } from "@/lib/page-banners";
 import { saveLifeklineMeasurement } from "@/lib/fortune-measurement-context";
-import type { YearKlineAnchor } from "@/lib/fortune-chart";
 
 function periodTitle(lifeYears: number, drillYear: number | null): string {
   if (drillYear) return `${drillYear}年 · 月度 K 线`;
@@ -156,13 +157,20 @@ export default function LifeklinePage() {
     year: number,
     yearBar?: KlineData,
   ) => {
-    const yearAnchor: YearKlineAnchor | undefined = yearBar
-      ? { open: yearBar.open, close: yearBar.close, high: yearBar.high, low: yearBar.low }
-      : undefined;
+    if (yearBar) {
+      const anchor: YearKlineAnchor = {
+        open: yearBar.open,
+        close: yearBar.close,
+        high: yearBar.high,
+        low: yearBar.low,
+      };
+      return generateMonthlyKline(info, year, anchor);
+    }
+
     const res = await fetch("/api/chart/monthly", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ birthInfo: info, year, yearAnchor }),
+      body: JSON.stringify({ birthInfo: info, year }),
     });
     const data = await res.json();
     if (!res.ok) {
@@ -481,30 +489,17 @@ export default function LifeklinePage() {
 
   const handleBarClick = (_index: number, item: KlineData) => {
     if (!birthInfo || item.isMonthly) return;
-    const cached = monthlyCacheRef.current.get(item.year);
-    if (cached?.length) {
-      setMonthlyKline(cached);
-      setDrillYear(item.year);
-      setSelectedIndex(undefined);
-      setSelectedYear(null);
-      return;
-    }
-    (async () => {
-      try {
-        setError(null);
-        setMonthlyLoading(true);
-        const kline = await requestMonthlyKline(birthInfo, item.year, item);
-        monthlyCacheRef.current.set(item.year, kline);
-        setMonthlyKline(kline);
-        setDrillYear(item.year);
-        setSelectedIndex(undefined);
-        setSelectedYear(null);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "月度K线生成失败，请稍后重试");
-      } finally {
-        setMonthlyLoading(false);
-      }
-    })();
+    const kline = generateMonthlyKline(birthInfo, item.year, {
+      open: item.open,
+      close: item.close,
+      high: item.high,
+      low: item.low,
+    });
+    monthlyCacheRef.current.set(item.year, kline);
+    setMonthlyKline(kline);
+    setDrillYear(item.year);
+    setSelectedIndex(undefined);
+    setSelectedYear(null);
   };
 
   const handleBarDoubleClick = (index: number, item: KlineData) => {

@@ -205,11 +205,16 @@ function roundK(v: number): number {
 export function alignMonthlyKlineToYearBar(
   rows: KlineData[],
   anchor: YearKlineAnchor,
+  info?: BirthInfo,
+  targetYear?: number,
 ): KlineData[] {
+  if (info && targetYear) {
+    return generateMonthlyKline(info, targetYear, anchor);
+  }
   if (!rows.length) return rows;
 
   const yearUp = anchor.close >= anchor.open;
-  const span = anchor.close - anchor.open || (yearUp ? 2 : -2);
+  const span = anchor.close - anchor.open || (yearUp ? 1 : -1);
   const result: KlineData[] = [];
   let prevClose = anchor.open;
 
@@ -217,42 +222,23 @@ export function alignMonthlyKlineToYearBar(
     const row = rows[i]!;
     const month = row.month ?? i + 1;
     const isLast = i === rows.length - 1;
-    const targetClose = isLast
-      ? anchor.close
-      : anchor.open + span * ((i + 1) / rows.length);
-
     let open = i === 0 ? anchor.open : prevClose;
-    let close = targetClose;
+    let close = isLast ? anchor.close : anchor.open + span * ((i + 1) / rows.length);
 
-    const aiNoise = (row.close - row.open) * 0.25;
-    close = clampKline(close + aiNoise, anchor.low, anchor.high);
-
-    if (yearUp && close < open) {
-      close = open + Math.max(0.3, Math.abs(span) * 0.015);
-    } else if (!yearUp && close > open) {
-      close = open - Math.max(0.3, Math.abs(span) * 0.015);
-    }
-
+    if (yearUp && close <= open) close = open + 0.2;
+    else if (!yearUp && close >= open) close = open - 0.2;
     if (isLast) close = anchor.close;
 
-    const high = clampKline(
-      Math.max(open, close, row.high ?? 0, anchor.high * 0.01 + Math.max(open, close)),
-      anchor.low,
-      anchor.high,
-    );
-    const low = clampKline(
-      Math.min(open, close, row.low ?? 100, anchor.low + Math.min(open, close) * 0.01),
-      anchor.low,
-      anchor.high,
-    );
+    open = clampKline(open, anchor.low, anchor.high);
+    close = clampKline(close, anchor.low, anchor.high);
 
     result.push({
       ...row,
       month,
       open: roundK(open),
       close: roundK(close),
-      high: roundK(Math.max(high, open, close)),
-      low: roundK(Math.min(low, open, close)),
+      high: roundK(Math.max(open, close, anchor.low)),
+      low: roundK(Math.min(open, close, anchor.high)),
       score: Math.round(close),
       trend: close >= open ? "up" : "down",
     });
@@ -260,8 +246,8 @@ export function alignMonthlyKlineToYearBar(
   }
 
   if (result[0]) result[0].open = roundK(anchor.open);
-  if (result[result.length - 1]) {
-    const last = result[result.length - 1]!;
+  const last = result[result.length - 1];
+  if (last) {
     last.close = roundK(anchor.close);
     last.trend = last.close >= last.open ? "up" : "down";
     last.score = Math.round(last.close);
@@ -300,36 +286,43 @@ export function generateMonthlyKline(
   const now = new Date();
   const isThisYear = targetYear === now.getFullYear();
   const yearUp = yearBar.close >= yearBar.open;
-  const span = yearBar.close - yearBar.open;
+  const start = yearBar.open;
+  const end = yearBar.close;
+  const span = end - start;
   const data: KlineData[] = [];
-  let prevClose = yearBar.open;
+  let prevClose = start;
 
   for (let m = 1; m <= 12; m++) {
-    const open = m === 1 ? yearBar.open : prevClose;
+    const open = m === 1 ? start : prevClose;
     const progress = m / 12;
-    const idealClose = yearBar.open + span * progress;
-    const noise = (rand() - 0.5) * Math.max(4, Math.abs(span) * 0.35);
-    let close = idealClose + noise;
+    let close = start + span * progress;
+    const noise = (rand() - 0.5) * Math.max(1.2, Math.abs(span) * 0.1);
+    close += noise;
 
-    if (yearUp && close < open) close = open + rand() * 2 + 0.2;
-    if (!yearUp && close > open) close = open - rand() * 2 - 0.2;
-    if (m === 12) close = yearBar.close;
+    if (m === 12) close = end;
 
+    if (yearUp) {
+      if (close <= open) close = open + 0.15 + rand() * 0.6;
+    } else {
+      if (close >= open) close = open - 0.15 - rand() * 0.6;
+    }
+
+    const openVal = clampKline(open, yearBar.low, yearBar.high);
     close = clampKline(close, yearBar.low, yearBar.high);
-    const high = clampKline(Math.max(open, close) + rand() * 3, yearBar.low, yearBar.high);
-    const low = clampKline(Math.min(open, close) - rand() * 3, yearBar.low, yearBar.high);
+    const high = clampKline(Math.max(openVal, close) + rand() * 2, yearBar.low, yearBar.high);
+    const low = clampKline(Math.min(openVal, close) - rand() * 2, yearBar.low, yearBar.high);
     const isCurrentMonth = isThisYear && m === now.getMonth() + 1;
 
     data.push({
       year: targetYear,
       age,
       month: m,
-      open: roundK(open),
+      open: roundK(openVal),
       close: roundK(close),
       high: roundK(high),
       low: roundK(low),
       score: Math.round(close),
-      trend: close >= open ? "up" : "down",
+      trend: close >= openVal ? "up" : "down",
       isMonthly: true,
       isBirth: false,
       isCurrent: isCurrentMonth,
@@ -340,6 +333,17 @@ export function generateMonthlyKline(
           : `${m}月`,
     });
     prevClose = close;
+  }
+
+  if (data[0]) {
+    data[0].open = roundK(start);
+    data[0].trend = data[0].close >= start ? "up" : "down";
+  }
+  const last = data[data.length - 1];
+  if (last) {
+    last.close = roundK(end);
+    last.trend = last.close >= last.open ? "up" : "down";
+    last.score = Math.round(last.close);
   }
 
   return annotateKlineExtremes(data);
