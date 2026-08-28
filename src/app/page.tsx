@@ -157,6 +157,7 @@ export default function HomePage() {
                 </button>
               );
             }
+            if (!("href" in item)) return null;
             return (
               <Link key={item.label} href={item.href} className="module-card !p-2">
                 <div className="mb-1 flex h-8 w-8 items-center justify-center rounded-full bg-app-bg">
