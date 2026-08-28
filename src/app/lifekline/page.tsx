@@ -77,6 +77,7 @@ export default function LifeklinePage() {
   const [generateSession, setGenerateSession] = useState(0);
   const [cacheVersion, setCacheVersion] = useState(0);
   const periodCacheRef = useRef<Map<number, KlineData[]>>(new Map());
+  const overallCacheRef = useRef<Map<number, OverallAnalysis>>(new Map());
   const monthlyCacheRef = useRef<Map<number, KlineData[]>>(new Map());
   const fullLifeLoadedRef = useRef(false);
   const generatingLifeYearsRef = useRef(10);
@@ -268,6 +269,8 @@ export default function LifeklinePage() {
       const cached = periodCacheRef.current.get(1);
       if (cached?.length && cached[0]?.isMonthly) {
         setCurrentYearMonthly(cached);
+        const cachedOverall = overallCacheRef.current.get(1);
+        if (cachedOverall) setOverall(cachedOverall);
         return;
       }
       setPeriodLoading(true);
@@ -275,6 +278,8 @@ export default function LifeklinePage() {
         setError(null);
         const lifeData = await requestLifeKline(info, 1);
         periodCacheRef.current.set(1, lifeData.periodKline);
+        overallCacheRef.current.set(1, lifeData.overall);
+        setOverall(lifeData.overall);
         const yearBar =
           lifeData.periodKline.find((r) => r.year === year) ??
           periodCacheRef.current.get(10)?.find((r) => r.year === year);
@@ -291,13 +296,20 @@ export default function LifeklinePage() {
       return;
     }
 
-    if (periodCacheRef.current.get(years)?.length) return;
+    const cachedKline = periodCacheRef.current.get(years);
+    if (cachedKline?.length) {
+      const cachedOverall = overallCacheRef.current.get(years);
+      if (cachedOverall) setOverall(cachedOverall);
+      return;
+    }
 
     setPeriodLoading(true);
     try {
       setError(null);
       const lifeData = await requestLifeKline(info, years);
       periodCacheRef.current.set(years, lifeData.periodKline);
+      overallCacheRef.current.set(years, lifeData.overall);
+      setOverall(lifeData.overall);
       bumpCache();
     } catch (err) {
       setError(err instanceof Error ? err.message : "人生K线生成失败，请稍后重试");
@@ -320,9 +332,11 @@ export default function LifeklinePage() {
         ]);
         applyFullLife(fullKlineData);
         periodCacheRef.current.set(10, lifeData10.periodKline);
+        overallCacheRef.current.set(10, lifeData10.overall);
 
         if (years >= 100) {
           periodCacheRef.current.set(100, fullKlineData);
+          overallCacheRef.current.set(100, lifeData10.overall);
           generateResultRef.current = {
             periodKline: fullKlineData,
             fullKline: fullKlineData,
@@ -332,6 +346,7 @@ export default function LifeklinePage() {
         } else if (years === 1) {
           const currentYear = new Date().getFullYear();
           const lifeData1 = await requestLifeKline(birthInfo, 1);
+          overallCacheRef.current.set(1, lifeData1.overall);
           const yearBar =
             lifeData1.periodKline.find((r) => r.year === currentYear) ??
             lifeData10.periodKline.find((r) => r.year === currentYear) ??
@@ -355,6 +370,7 @@ export default function LifeklinePage() {
         } else {
           const lifeData = await requestLifeKline(birthInfo, years);
           periodCacheRef.current.set(years, lifeData.periodKline);
+          overallCacheRef.current.set(years, lifeData.overall);
           generateResultRef.current = {
             periodKline: lifeData.periodKline,
             fullKline: fullKlineData,
@@ -403,6 +419,7 @@ export default function LifeklinePage() {
     if (!canUse("lifekline")) { setPaywall(true); return; }
     setError(null);
     periodCacheRef.current.clear();
+    overallCacheRef.current.clear();
     monthlyCacheRef.current.clear();
     fullLifeLoadedRef.current = false;
     setFullKline([]);
@@ -677,6 +694,7 @@ export default function LifeklinePage() {
               <button onClick={() => {
                 clearSessionResult("lifekline");
                 periodCacheRef.current.clear();
+                overallCacheRef.current.clear();
                 monthlyCacheRef.current.clear();
                 fullLifeLoadedRef.current = false;
                 setPhase("form");
