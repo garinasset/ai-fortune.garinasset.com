@@ -25,6 +25,20 @@ function TagRow({ label, items, tone }: { label: string; items: string[]; tone: 
 export default function TodayHuangliCard() {
   const huangli = useMemo(() => getTodayHuangli(), []);
 
+  const festivals = useMemo(
+    () => [
+      ...huangli.traditionalFestivals.map((f) => ({ name: f, kind: "traditional" as const })),
+      ...huangli.taoistFestivals.map((f) => ({ name: f, kind: "taoist" as const })),
+    ],
+    [huangli.taoistFestivals, huangli.traditionalFestivals],
+  );
+
+  const singleFestival = festivals.length === 1;
+  const festivalTextClass = singleFestival
+    ? "text-[length:clamp(11px,3.2vw,14px)]"
+    : "text-[length:clamp(8px,2.4vw,10px)]";
+  const festivalPadClass = singleFestival ? "px-2 py-0.5" : "px-1.5 py-0.5";
+
   return (
     <section className="page-section mb-5">
       <div className="app-card overflow-hidden border-app-gold/25 bg-gradient-to-br from-[#2a1810]/35 via-app-card to-app-bg/80 !p-0">
@@ -36,22 +50,18 @@ export default function TodayHuangliCard() {
             <p className="text-sm font-semibold text-app-gold">今日老黄历</p>
             <p className="text-[10px] text-app-muted">每日宜忌 · 顺时而行</p>
           </div>
-          {(huangli.traditionalFestivals.length > 0 || huangli.taoistFestivals.length > 0) && (
-            <div className="flex max-w-[58%] shrink-0 flex-wrap items-center justify-end gap-1">
-              {huangli.traditionalFestivals.map((f) => (
+          {festivals.length > 0 && (
+            <div className="flex min-w-0 max-w-[62%] flex-row flex-wrap items-center justify-end gap-1 sm:max-w-[68%]">
+              {festivals.map(({ name, kind }) => (
                 <span
-                  key={`t-${f}`}
-                  className="inline-flex items-center rounded-full border border-app-gold/30 bg-app-gold/10 px-1.5 py-0.5 text-[9px] leading-none text-app-gold"
+                  key={`${kind}-${name}`}
+                  className={`inline-flex max-w-full shrink items-center rounded-full border leading-none whitespace-nowrap ${festivalPadClass} ${festivalTextClass} ${
+                    kind === "traditional"
+                      ? "border-app-gold/30 bg-app-gold/10 text-app-gold"
+                      : "border-app-accent/30 bg-app-accent/10 text-app-accent"
+                  }`}
                 >
-                  {f}
-                </span>
-              ))}
-              {huangli.taoistFestivals.map((f) => (
-                <span
-                  key={`d-${f}`}
-                  className="inline-flex items-center rounded-full border border-app-accent/30 bg-app-accent/10 px-1.5 py-0.5 text-[9px] leading-none text-app-accent"
-                >
-                  {f}
+                  {name}
                 </span>
               ))}
             </div>

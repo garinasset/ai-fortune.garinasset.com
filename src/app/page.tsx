@@ -21,18 +21,19 @@ import {
 import { LiuyaoDemoCard } from "@/components/fortune-hub/HubFeatureDemos";
 import TarotDemoCard from "@/components/tarot/TarotDemoCard";
 import TodayHuangliCard from "@/components/TodayHuangliCard";
+import TodayDailyFortuneCard from "@/components/TodayDailyFortuneCard";
 
 const PRIMARY_ROW1 = [
   { href: "/spirit-pet", emoji: "🦄", label: "AI 灵宠", desc: "守护灵宠" },
   { href: "/lifekline", icon: TrendingUp, label: "人生K线", desc: "命势可视化" },
-  { href: "/lifekline?tab=liuyao", hexagram: true, label: "AI六爻", desc: "卦象占卜" },
   { href: "/lifekline?tab=tarot", emoji: "🔮", label: "塔罗AI", desc: "韦特牌阵" },
 ];
 
 const PRIMARY_ROW2 = [
+  { href: "/lifekline?tab=liuyao", hexagram: true, label: "AI六爻", desc: "卦象占卜" },
   { href: "/lifekline?tab=bazi", icon: Sparkles, label: "八字排盘", desc: "四柱八字" },
   { href: "/xiang", icon: Hand, label: "AI看相", desc: "手相面相" },
-  { href: "/ask?from=spirit-pet", icon: MessageCircle, label: "问AI灵宠", desc: "守护灵对话" },
+  { href: "/ask?from=spirit-pet", icon: MessageCircle, label: "问灵宠", desc: "守护灵对话" },
 ];
 
 const SECONDARY: Array<
@@ -40,7 +41,7 @@ const SECONDARY: Array<
   | { type: "fortune-guide"; icon: typeof Sun; label: string }
 > = [
   { href: "/shop", icon: ShoppingBag, label: "灵宠商城" },
-  { type: "fortune-guide", icon: Sun, label: "今日运势指引" },
+  { type: "fortune-guide", icon: Sun, label: "今日灵签" },
   { href: "/master", icon: UserRound, label: "问真人大师" },
   { href: "/records", icon: FileText, label: "我的测算" },
   { href: "/community", icon: Users, label: "社区" },
@@ -62,12 +63,12 @@ export default function HomePage() {
   const router = useRouter();
   const [primaryModalOpen, setPrimaryModalOpen] = useState(false);
 
-  const goDailyFortuneGuide = () => {
+  const goFortuneStick = () => {
     if (!ensurePrimaryPersonBeforeCalc()) {
       setPrimaryModalOpen(true);
       return;
     }
-    router.push("/ask?from=spirit-pet&section=daily-fortune");
+    router.push("/ask?from=spirit-pet&ability=今日灵签");
   };
 
   const demoKline = DEMO_KLINE.map((d) => ({
@@ -93,7 +94,7 @@ export default function HomePage() {
       {/* 核心功能 */}
       <section className="page-section">
         <p className="section-label">核心功能</p>
-        <div className="mb-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <div className="mb-2 grid grid-cols-3 gap-2">
           {PRIMARY_ROW1.map((item) => {
             const Icon = "icon" in item ? item.icon : null;
             return (
@@ -113,13 +114,17 @@ export default function HomePage() {
             );
           })}
         </div>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {PRIMARY_ROW2.map((item) => {
-            const Icon = item.icon;
+            const Icon = "icon" in item ? item.icon : null;
             return (
               <Link key={item.label} href={item.href} className="module-card-featured !py-3">
                 <div className="mb-1.5 flex h-10 w-10 items-center justify-center rounded-full bg-app-gold/15">
-                  <Icon className="h-5 w-5 text-app-gold" strokeWidth={1.8} />
+                  {"hexagram" in item && item.hexagram ? (
+                    <HexagramIconMini className="text-app-gold" />
+                  ) : Icon ? (
+                    <Icon className="h-5 w-5 text-app-gold" strokeWidth={1.8} />
+                  ) : null}
                 </div>
                 <span className="caption font-semibold text-app-text">{item.label}</span>
                 <span className="micro mt-0.5">{item.desc}</span>
@@ -147,7 +152,7 @@ export default function HomePage() {
                 <button
                   key={item.label}
                   type="button"
-                  onClick={goDailyFortuneGuide}
+                  onClick={goFortuneStick}
                   className="module-card !p-2 text-left"
                 >
                   <div className="mb-1 flex h-8 w-8 items-center justify-center rounded-full bg-app-bg">
@@ -169,6 +174,8 @@ export default function HomePage() {
           })}
         </div>
       </section>
+
+      <TodayDailyFortuneCard onNeedPrimary={() => setPrimaryModalOpen(true)} />
 
       {/* 功能示例 */}
       <section className="page-section space-y-5">
